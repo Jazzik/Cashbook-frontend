@@ -1,26 +1,292 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React from "react";
+import {
+  Typography,
+  Box,
+  AppBar,
+  Toolbar,
+  CssBaseline,
+  // Remove unused imports
+  // Grid,
+  // Paper,
+} from "@mui/material";
+import { ThemeProvider, createTheme } from "@mui/material/styles";
+import { ShiftProvider, useShift } from "./context/ShiftContext";
+import { SettingsProvider } from "./context/SettingsContext";
+import ExpenseForm from "./components/ExpenseForm";
+import TerminalForm from "./components/TerminalForm";
+import CashWithdrawalForm from "./components/CashWithdrawalForm";
+import ShiftSummary from "./components/ShiftSummary";
+import DenominationModal from "./components/DenominationModal";
+import CashReturnsForm from "./components/CashReturnsForm";
+import CashDepositsForm from "./components/CashDepositsForm";
+import SettingsModal from "./components/SettingsModal";
+import { themeOverrides, CARD_DIMENSIONS, LAYOUT_DIMENSIONS } from "./styles";
 
-function App() {
+// Импортируем иконки
+import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
+import PaymentsIcon from "@mui/icons-material/Payments";
+import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
+
+// Create theme
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: "#1976d2",
+    },
+    secondary: {
+      main: "#f50057",
+    },
+  },
+  typography: {
+    fontFamily: '"Roboto", "Arial", sans-serif',
+    // Возвращаем стандартные размеры шрифтов
+    h4: { fontSize: "2.125rem" },
+    h5: { fontSize: "1.5rem" },
+    h6: { fontSize: "1.25rem" },
+    body1: { fontSize: "1rem" },
+    body2: { fontSize: "0.875rem" },
+    button: { fontSize: "0.875rem" },
+  },
+  components: themeOverrides.components,
+});
+
+// Main content component
+const MainContent: React.FC = () => {
+  const {
+    initialBalance,
+    expenses,
+    cashReturns,
+    cashDeposits,
+    terminal,
+    terminalReturns,
+    terminalTransfer,
+    cashInRegister,
+    cashWithdrawal,
+    updateInitialBalance,
+    addExpense,
+    removeExpense,
+    addCashReturn,
+    removeCashReturn,
+    addCashDeposit,
+    removeCashDeposit,
+    updateTerminal,
+    updateTerminalReturns,
+    updateTerminalTransfer,
+    updateCashInRegister,
+    updateCashWithdrawal,
+    calculateFinalBalance,
+    getShiftData,
+    resetShift,
+  } = useShift();
+
+  // Стиль для верхних карточек с уменьшенной высотой
+  const topCardStyle = {
+    display: "flex",
+    height: CARD_DIMENSIONS.topCardHeight,
+    "& > *": {
+      height: "100%",
+      display: "flex",
+      flexDirection: "column",
+    },
+  };
+
+  // Стиль для нижних карточек, чтобы они были одинаковой высоты
+  const bottomCardStyle = {
+    display: "flex",
+    height: CARD_DIMENSIONS.bottomCardHeight,
+    "& > *": {
+      height: "100%",
+      display: "flex",
+      flexDirection: "column",
+    },
+  };
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
+    <Box sx={{ p: 1 }}>
+      <Typography variant="h4" align="center" sx={{ mb: 2 }}>
+        Учет кассы
+      </Typography>
+
+      <Box
+        sx={{
+          width: "100%",
+          overflowX: "hidden",
+          display: "flex",
+          justifyContent: "center",
+        }}
+      >
+        <Box
+          sx={{
+            marginTop: LAYOUT_DIMENSIONS.marginTop,
+            marginLeft: LAYOUT_DIMENSIONS.marginLeft,
+            marginRight: LAYOUT_DIMENSIONS.marginLeft,
+            marginBottom: "30px",
+            display: "flex",
+            flexDirection: "row",
+            gap: LAYOUT_DIMENSIONS.gap,
+            minWidth: LAYOUT_DIMENSIONS.minWidth,
+            maxWidth: "100%",
+            boxSizing: "border-box",
+          }}
         >
-          Learn React
-        </a>
-      </header>
-    </div>
+          {/* Первая колонка: начальное сальдо и наличные в кассе */}
+          <Box
+            sx={{
+              width: LAYOUT_DIMENSIONS.columnWidths.first,
+              display: "flex",
+              flexDirection: "column",
+              gap: LAYOUT_DIMENSIONS.gap,
+            }}
+          >
+            <Box sx={topCardStyle}>
+              <DenominationModal
+                title="Начальное сальдо"
+                buttonText="Ввести"
+                initialDenominations={initialBalance.denominations}
+                onChange={updateInitialBalance}
+                total={initialBalance.total}
+                icon={<AccountBalanceWalletIcon />}
+                color="primary"
+                cardType="initialBalance"
+              />
+            </Box>
+            <Box sx={bottomCardStyle}>
+              <DenominationModal
+                title="Наличные в кассе до инкассации"
+                buttonText="Ввести"
+                initialDenominations={cashInRegister.denominations}
+                onChange={updateCashInRegister}
+                total={cashInRegister.total}
+                icon={<PaymentsIcon />}
+                color="info"
+                cardType="cashInRegister"
+              />
+            </Box>
+          </Box>
+
+          {/* Вторая колонка: терминал и расходы */}
+          <Box
+            sx={{
+              width: LAYOUT_DIMENSIONS.columnWidths.second,
+              display: "flex",
+              flexDirection: "column",
+              gap: LAYOUT_DIMENSIONS.gap,
+            }}
+          >
+            <Box sx={topCardStyle}>
+              <TerminalForm
+                terminal={terminal}
+                terminalReturns={terminalReturns}
+                terminalTransfer={terminalTransfer}
+                onUpdateTerminal={updateTerminal}
+                onUpdateTerminalReturns={updateTerminalReturns}
+                onUpdateTerminalTransfer={updateTerminalTransfer}
+              />
+            </Box>
+            <Box sx={bottomCardStyle}>
+              <ExpenseForm
+                expenses={expenses}
+                onAdd={addExpense}
+                onRemove={removeExpense}
+              />
+            </Box>
+          </Box>
+
+          {/* Третья колонка: внесение наличных и возвраты наличными */}
+          <Box
+            sx={{
+              width: LAYOUT_DIMENSIONS.columnWidths.third,
+              display: "flex",
+              flexDirection: "column",
+              gap: LAYOUT_DIMENSIONS.gap,
+            }}
+          >
+            <Box sx={topCardStyle}>
+              <CashDepositsForm
+                cashDeposits={cashDeposits.items}
+                totalDeposits={cashDeposits.total}
+                onAdd={addCashDeposit}
+                onRemove={removeCashDeposit}
+              />
+            </Box>
+            <Box sx={bottomCardStyle}>
+              <CashReturnsForm
+                cashReturns={cashReturns.items}
+                totalReturns={cashReturns.total}
+                onAdd={addCashReturn}
+                onRemove={removeCashReturn}
+              />
+            </Box>
+          </Box>
+
+          {/* Четвертая колонка: выемка из кассы и сводка */}
+          <Box
+            sx={{
+              width: LAYOUT_DIMENSIONS.columnWidths.fourth,
+              display: "flex",
+              flexDirection: "column",
+              gap: LAYOUT_DIMENSIONS.gap,
+            }}
+          >
+            <Box sx={topCardStyle}>
+              <CashWithdrawalForm
+                cashWithdrawal={cashWithdrawal}
+                onUpdateCashWithdrawal={updateCashWithdrawal}
+              />
+            </Box>
+            <Box sx={bottomCardStyle}>
+              <ShiftSummary
+                initialBalance={initialBalance.total}
+                expenses={expenses.reduce((sum, exp) => sum + exp.amount, 0)}
+                cashReturns={cashReturns.total}
+                cashDeposits={cashDeposits.total}
+                terminal={terminal}
+                terminalReturns={terminalReturns}
+                terminalTransfer={terminalTransfer}
+                cashInRegister={cashInRegister.total}
+                cashWithdrawal={cashWithdrawal.total}
+                finalBalance={calculateFinalBalance()}
+                onGetShiftData={getShiftData}
+                onResetShift={resetShift}
+              />
+            </Box>
+          </Box>
+        </Box>
+      </Box>
+    </Box>
   );
-}
+};
+
+// Root component
+const App: React.FC = () => {
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <SettingsProvider>
+        <ShiftProvider>
+          <Box sx={{ flexGrow: 1 }}>
+            <AppBar position="static" color="primary">
+              <Toolbar>
+                <Box sx={{ display: "flex", alignItems: "center" }}>
+                  <PointOfSaleIcon sx={{ mr: 1.5, fontSize: 32 }} />
+                  <Typography
+                    variant="h6"
+                    component="div"
+                    sx={{ fontWeight: "bold" }}
+                  >
+                    Кассовая книга
+                  </Typography>
+                </Box>
+                <Box sx={{ flexGrow: 1 }} />
+                <SettingsModal />
+              </Toolbar>
+            </AppBar>
+            <MainContent />
+          </Box>
+        </ShiftProvider>
+      </SettingsProvider>
+    </ThemeProvider>
+  );
+};
 
 export default App;

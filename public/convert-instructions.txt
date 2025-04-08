@@ -1,0 +1,24 @@
+Инструкции по созданию иконок из SVG:
+
+1. Для генерации favicon.ico и PNG-логотипов вы можете использовать:
+   - Онлайн-конвертеры: RealFaviconGenerator (https://realfavicongenerator.net/) или Favicon.io (https://favicon.io/)
+   - Загрузите на них файл favicon.svg
+
+2. Или с помощью командной строки (требуется ImageMagick):
+   ```bash
+   # Для favicon.ico
+   convert favicon.svg -resize 32x32 favicon.ico
+   
+   # Для logo192.png
+   convert favicon.svg -resize 192x192 logo192.png
+   
+   # Для logo512.png
+   convert favicon.svg -resize 512x512 logo512.png
+   ```
+
+3. Или используйте графический редактор (Photoshop, GIMP, Figma и т.д.):
+   - Откройте favicon.svg
+   - Экспортируйте в разных размерах (32x32, 192x192, 512x512)
+   - Сохраните как favicon.ico, logo192.png и logo512.png
+
+После создания иконок, просто замените существующие файлы в папке /public проекта. 
