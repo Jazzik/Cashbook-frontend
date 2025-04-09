@@ -6,6 +6,7 @@ pipeline {
         echo 'Build imitation'
         echo 'Build imitation complete'
         tool 'NodeJS'
+        sh 'npm install'
       }
     }
 
@@ -14,8 +15,6 @@ pipeline {
         echo 'Testing imitation'
         echo 'Testing imitation'
         sh 'npm -v'
-        echo 'Big sexy biba'
-        sh 'npm list react'
       }
     }
 
