@@ -15,6 +15,7 @@ pipeline {
         echo 'Testing imitation'
         sh 'npm -v'
         echo 'Big sexy biba'
+        sh 'npm list react'
       }
     }
 
