@@ -9,11 +9,12 @@ pipeline {
       }
     }
 
-    stage('Testing') {
+    stage('Replace Current Docker Container') {
       steps {
-        echo 'Testing imitation'
-        echo 'Testing imitation'
-        sh 'npm -v'
+        sh '''docker build -t $IMAGE_NAME .
+docker stop $CONTAINER_NAME || true
+docker rm $CONTAINER_NAME || true
+docker run -d --name $CONTAINER_NAME -p 3000:80 $IMAGE_NAME'''
       }
     }
 
@@ -33,5 +34,9 @@ pipeline {
   }
   tools {
     nodejs 'NodeJS'
+  }
+  environment {
+    IMAGE_NAME = 'CashBook_FrontEnd'
+    CONTAINER_NAME = 'Cashbook_front_container'
   }
 }
