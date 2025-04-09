@@ -1,14 +1,11 @@
 pipeline {
   agent any
-  tools {
-    nodejs 'NodeJS' 
-  }
-
   stages {
     stage('Build') {
       steps {
         echo 'Build imitation'
         echo 'Build imitation complete'
+        tool 'NodeJS'
       }
     }
 
@@ -16,7 +13,9 @@ pipeline {
       steps {
         echo 'Testing imitation'
         echo 'Testing imitation'
-	sh 'npm -v'
+        sh 'npm -v'
+        echo 'Big sexy biba'
+        sh 'npm list react'
       }
     }
 
@@ -33,5 +32,8 @@ pipeline {
       }
     }
 
+  }
+  tools {
+    nodejs 'NodeJS'
   }
 }
