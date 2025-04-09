@@ -1,5 +1,9 @@
 pipeline {
   agent any
+  tools {
+    nodejs 'NodeJS' 
+  }
+
   stages {
     stage('Build') {
       steps {
@@ -12,6 +16,8 @@ pipeline {
       steps {
         echo 'Testing imitation'
         echo 'Testing imitation'
+	sh 'npm -v'
+	
       }
     }
 
