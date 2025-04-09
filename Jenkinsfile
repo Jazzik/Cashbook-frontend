@@ -4,17 +4,17 @@ pipeline {
     stage('Build') {
       steps {
         tool 'NodeJS'
-        sh 'npm install'
-        sh 'npm run build'
+        // sh 'npm install'
+        // sh 'npm run build'
       }
     }
 
     stage('Replace Current Docker Container') {
       steps {
-//         sh '''docker build -t $IMAGE_NAME .
-// docker stop $CONTAINER_NAME || true
-// docker rm $CONTAINER_NAME || true
-// docker run -d --name $CONTAINER_NAME -p 3000:80 $IMAGE_NAME'''
+        sh '''docker build -t $IMAGE_NAME .
+docker stop $CONTAINER_NAME || true
+docker rm $CONTAINER_NAME || true
+docker run -d --name $CONTAINER_NAME -p 3000:80 $IMAGE_NAME'''
       }
     }
 
