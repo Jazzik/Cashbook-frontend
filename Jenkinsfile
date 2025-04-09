@@ -17,9 +17,6 @@ pipeline {
         echo 'Testing imitation'
         echo 'Testing imitation'
 	sh 'npm -v'
-	
-        echo 'Big sexy biba'
-	
       }
     }
 
