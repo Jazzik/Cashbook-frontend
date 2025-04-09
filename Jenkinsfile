@@ -36,7 +36,7 @@ docker run -d --name $CONTAINER_NAME -p 3000:80 $IMAGE_NAME'''
     nodejs 'NodeJS'
   }
   environment {
-    IMAGE_NAME = 'CashBook_FrontEnd'
-    CONTAINER_NAME = 'Cashbook_front_container'
+    IMAGE_NAME = 'cashbook_frontend'
+    CONTAINER_NAME = 'cashbook_frontend_container'
   }
 }
