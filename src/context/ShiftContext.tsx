@@ -176,7 +176,7 @@ export const ShiftProvider: React.FC<{ children: ReactNode }> = ({
     setCashWithdrawal(updateCashWithDenominations(denominations));
   };
 
-  const calculateFinalBalance = () => {
+  const calculateFinalBalance = useCallback(() => {
     // Конечное сальдо - это сколько денег должно остаться в кассе в конце смены
     // Рассчитывается как разница между наличными в кассе и выемкой из кассы
     // Формула максимально проста и отражает реальное положение вещей
@@ -193,7 +193,7 @@ export const ShiftProvider: React.FC<{ children: ReactNode }> = ({
     // Don't update state inside the calculation function to avoid React errors
     // This function now just returns the calculated value
     return finalBalanceValue;
-  };
+  }, [cashInRegister.total, cashWithdrawal.total]);
 
   // Separate function to update the final balance state - should be called in useEffect or event handlers
   const updateFinalBalance = useCallback(() => {
