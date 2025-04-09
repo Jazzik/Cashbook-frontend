@@ -3,10 +3,9 @@ pipeline {
   stages {
     stage('Build') {
       steps {
-        echo 'Build imitation'
-        echo 'Build imitation complete'
         tool 'NodeJS'
         sh 'npm install'
+        sh 'npm run build'
       }
     }
 
