@@ -37,6 +37,6 @@ docker run -d --name $CONTAINER_NAME -p 3000:80 -e REACT_APP_API_URL=$REACT_APP_
   environment {
     IMAGE_NAME = 'cashbook_frontend'
     CONTAINER_NAME = 'cashbook_frontend_container'
-    REACT_APP_API_URL = 'http://localhost:5000/api'
+    REACT_APP_API_URL = 'http://172.17.0.1:5000/api'
   }
 }
