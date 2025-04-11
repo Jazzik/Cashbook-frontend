@@ -13,9 +13,7 @@ pipeline {
         sh '''docker build -t $IMAGE_NAME .
 docker stop $CONTAINER_NAME || true
 docker rm $CONTAINER_NAME || true
-docker run -d --name $CONTAINER_NAME -p 3000:80 $IMAGE_NAME
--e REACT_APP_API_URL=$REACT_APP_API_URL
-'''
+docker run -d --name $CONTAINER_NAME -p 3000:80 -e REACT_APP_API_URL=$REACT_APP_API_URL $IMAGE_NAME'''
       }
     }
 
