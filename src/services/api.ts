@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { ShiftData } from '../types';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+const API_URL = process.env.REACT_APP_API_URL
 
 // Create an axios instance
 const apiClient = axios.create({

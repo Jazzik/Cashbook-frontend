@@ -1,19 +1,12 @@
 pipeline {
   agent any
   stages {
-    stage('Build') {
+    stage('Build and Deploy Docker Container') {
       steps {
-        sh 'npm install'
-        sh 'npm run build'
-      }
-    }
-
-    stage('Replace Current Docker Container') {
-      steps {
-        sh '''docker build -t $IMAGE_NAME .
+        sh '''docker build -t $IMAGE_NAME --build-arg REACT_APP_API_URL=$REACT_APP_API_URL .
 docker stop $CONTAINER_NAME || true
 docker rm $CONTAINER_NAME || true
-docker run -d --name $CONTAINER_NAME --network cashbook-network -p 3000:80 -e REACT_APP_API_URL=$REACT_APP_API_URL $IMAGE_NAME'''
+docker run -d --name $CONTAINER_NAME --network cashbook-network -p 3000:80 $IMAGE_NAME'''
       }
     }
 
