@@ -13,7 +13,7 @@ pipeline {
         sh '''docker build -t $IMAGE_NAME .
 docker stop $CONTAINER_NAME || true
 docker rm $CONTAINER_NAME || true
-docker run -d --name $CONTAINER_NAME -p 3000:80 -e REACT_APP_API_URL=$REACT_APP_API_URL $IMAGE_NAME'''
+docker run -d --name $CONTAINER_NAME --network cashbook-network -p 3000:80 -e REACT_APP_API_URL=$REACT_APP_API_URL $IMAGE_NAME'''
       }
     }
 
@@ -37,6 +37,6 @@ docker run -d --name $CONTAINER_NAME -p 3000:80 -e REACT_APP_API_URL=$REACT_APP_
   environment {
     IMAGE_NAME = 'cashbook_frontend'
     CONTAINER_NAME = 'cashbook_frontend_container'
-    REACT_APP_API_URL = 'http://172.17.0.1:5000/api'
+    REACT_APP_API_URL = 'http://cashbook_backend_container:5000/api'
   }
 }
