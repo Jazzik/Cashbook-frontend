@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { ShiftData } from '../types';
 
-const API_URL = process.env.REACT_APP_API_URL
+// Use a fixed internal URL that will be intercepted by Nginx
+const API_URL = '/internal-api';
 
 // Create an axios instance
 const apiClient = axios.create({
