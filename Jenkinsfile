@@ -6,7 +6,7 @@ pipeline {
         sh '''docker build -t $IMAGE_NAME .
 docker stop $CONTAINER_NAME || true
 docker rm $CONTAINER_NAME || true
-docker run -d --name $CONTAINER_NAME --network cashbook-network -p 3000:80 -e BACKEND_URL=$BACKEND_URL $IMAGE_NAME'''
+docker run -d --name $CONTAINER_NAME --network cashbook-network -p 127.0.0.1:3000:80 -e BACKEND_URL=$BACKEND_URL $IMAGE_NAME'''
       }
     }
 
