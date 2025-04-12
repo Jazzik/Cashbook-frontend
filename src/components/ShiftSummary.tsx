@@ -288,7 +288,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
           sx: {
             borderRadius: "16px",
             overflow: "hidden",
-            maxWidth: "900px",
+            maxWidth: "1100px",
           },
         }}
       >
@@ -297,7 +297,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
             backgroundColor: getMainColor(),
             color: "white",
             fontWeight: "bold",
-            py: 2,
+            py: 1,
           }}
         >
           {submitSuccess ? (
@@ -309,7 +309,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
             "Подтверждение закрытия смены"
           )}
         </DialogTitle>
-        <DialogContent sx={{ p: 3, mt: 1 }}>
+        <DialogContent sx={{ p: 1, mt: 0.5 }}>
           {submitSuccess ? (
             <Box
               sx={{
@@ -317,20 +317,20 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                py: 2,
+                py: 1.5,
               }}
             >
               <DoneAllIcon
                 color="success"
-                sx={{ fontSize: "4rem", mb: 2, color: getMainColor() }}
+                sx={{ fontSize: "3.5rem", mb: 1.5, color: getMainColor() }}
               />
               <Typography
                 variant="h6"
-                sx={{ fontWeight: "bold", color: getMainColor(), mb: 1 }}
+                sx={{ fontWeight: "bold", color: getMainColor(), mb: 0.5 }}
               >
                 Данные успешно отправлены!
               </Typography>
-              <Typography variant="body1" textAlign="center" sx={{ mb: 3 }}>
+              <Typography variant="body1" textAlign="center" sx={{ mb: 2 }}>
                 Данные по смене были успешно отправлены и сохранены в базе.
                 Нажмите "Закрыть", чтобы начать новую смену.
               </Typography>
@@ -343,14 +343,14 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                 </Box>
               )}
 
-              <Card variant="outlined" sx={{ mb: 3 }}>
-                <CardContent sx={{ p: 4 }}>
-                  <Grid container spacing={4}>
+              <Card variant="outlined" sx={{ mb: 2 }}>
+                <CardContent sx={{ p: 3 }}>
+                  <Grid container spacing={2}>
                     <Grid item xs={12} md={4}>
                       <Box
                         sx={{
                           textAlign: "center",
-                          p: 3,
+                          p: 2,
                           borderRadius: 3,
                           backgroundColor: "rgba(25, 118, 210, 0.04)",
                           border: "1px solid rgba(25, 118, 210, 0.1)",
@@ -370,7 +370,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                         <Typography
                           variant="subtitle1"
                           color="text.secondary"
-                          sx={{ mt: 2 }}
+                          sx={{ mt: 1 }}
                         >
                           Общая выручка
                         </Typography>
@@ -380,7 +380,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                       <Box
                         sx={{
                           textAlign: "center",
-                          p: 3,
+                          p: 2,
                           borderRadius: 3,
                           backgroundColor: "rgba(25, 118, 210, 0.04)",
                           border: "1px solid rgba(25, 118, 210, 0.1)",
@@ -400,7 +400,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                         <Typography
                           variant="subtitle1"
                           color="text.secondary"
-                          sx={{ mt: 2 }}
+                          sx={{ mt: 1 }}
                         >
                           Безналичная выручка
                         </Typography>
@@ -410,7 +410,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                       <Box
                         sx={{
                           textAlign: "center",
-                          p: 3,
+                          p: 2,
                           borderRadius: 3,
                           backgroundColor: "rgba(25, 118, 210, 0.04)",
                           border: "1px solid rgba(25, 118, 210, 0.1)",
@@ -430,7 +430,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                         <Typography
                           variant="subtitle1"
                           color="text.secondary"
-                          sx={{ mt: 2 }}
+                          sx={{ mt: 1 }}
                         >
                           Наличная выручка
                         </Typography>
@@ -438,11 +438,11 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                     </Grid>
                   </Grid>
 
-                  <Grid container spacing={4} sx={{ mt: 4 }}>
+                  <Grid container spacing={2} sx={{ mt: 1 }}>
                     <Grid item xs={12} md={6}>
                       <Box
                         sx={{
-                          p: 3,
+                          p: 2,
                           borderRadius: 3,
                           backgroundColor: "rgba(25, 118, 210, 0.02)",
                           border: "1px solid rgba(25, 118, 210, 0.05)",
@@ -453,7 +453,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                           variant="h6"
                           fontWeight="bold"
                           sx={{
-                            mb: 3,
+                            mb: 2,
                             color: "primary",
                             display: "flex",
                             alignItems: "center",
@@ -463,7 +463,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                           <CreditCardIcon fontSize="medium" />
                           Безналичные операции
                         </Typography>
-                        <Box sx={{ mb: 3 }}>
+                        <Box sx={{ mb: 2 }}>
                           <Typography
                             variant="body2"
                             color="text.secondary"
@@ -481,7 +481,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                         </Box>
 
                         {terminalReturnsDetails.length > 0 ? (
-                          <Box sx={{ mb: 3 }}>
+                          <Box sx={{ mb: 2 }}>
                             <Typography
                               variant="body2"
                               color="text.secondary"
@@ -494,7 +494,14 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                               variant="outlined"
                               sx={{ mb: 1 }}
                             >
-                              <Table size="small">
+                              <Table
+                                size="small"
+                                sx={{
+                                  "& td, & th": { py: 0.5, px: 1 },
+                                  "& tr:last-child td": { pb: 0.5 },
+                                  "& tr:first-child th": { pt: 0.5 },
+                                }}
+                              >
                                 <TableHead>
                                   <TableRow>
                                     <TableCell>Описание</TableCell>
@@ -532,7 +539,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                             </TableContainer>
                           </Box>
                         ) : (
-                          <Box sx={{ mb: 3 }}>
+                          <Box sx={{ mb: 2 }}>
                             <Typography
                               variant="body2"
                               color="text.secondary"
@@ -550,7 +557,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                           </Box>
                         )}
 
-                        <Box sx={{ mb: 3 }}>
+                        <Box sx={{ mb: 2 }}>
                           <Typography
                             variant="body2"
                             color="text.secondary"
@@ -593,7 +600,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                     <Grid item xs={12} md={6}>
                       <Box
                         sx={{
-                          p: 3,
+                          p: 2,
                           borderRadius: 3,
                           backgroundColor: "rgba(25, 118, 210, 0.02)",
                           border: "1px solid rgba(25, 118, 210, 0.05)",
@@ -604,7 +611,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                           variant="h6"
                           fontWeight="bold"
                           sx={{
-                            mb: 3,
+                            mb: 2,
                             color: "primary",
                             display: "flex",
                             alignItems: "center",
@@ -615,7 +622,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                           Наличные операции
                         </Typography>
 
-                        <Box sx={{ mb: 3 }}>
+                        <Box sx={{ mb: 2 }}>
                           <Typography
                             variant="body2"
                             color="text.secondary"
@@ -628,7 +635,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                           </Typography>
                         </Box>
 
-                        <Box sx={{ mb: 3 }}>
+                        <Box sx={{ mb: 2 }}>
                           <Typography
                             variant="body2"
                             color="text.secondary"
@@ -646,7 +653,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                         </Box>
 
                         {expensesDetails.length > 0 ? (
-                          <Box sx={{ mb: 3 }}>
+                          <Box sx={{ mb: 2 }}>
                             <Typography
                               variant="body2"
                               color="text.secondary"
@@ -659,7 +666,14 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                               variant="outlined"
                               sx={{ mb: 1 }}
                             >
-                              <Table size="small">
+                              <Table
+                                size="small"
+                                sx={{
+                                  "& td, & th": { py: 0.5, px: 1 },
+                                  "& tr:last-child td": { pb: 0.5 },
+                                  "& tr:first-child th": { pt: 0.5 },
+                                }}
+                              >
                                 <TableHead>
                                   <TableRow>
                                     <TableCell>Описание</TableCell>
@@ -697,7 +711,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                             </TableContainer>
                           </Box>
                         ) : (
-                          <Box sx={{ mb: 3 }}>
+                          <Box sx={{ mb: 2 }}>
                             <Typography
                               variant="body2"
                               color="text.secondary"
@@ -716,7 +730,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                         )}
 
                         {cashReturnsDetails.length > 0 ? (
-                          <Box sx={{ mb: 3 }}>
+                          <Box sx={{ mb: 2 }}>
                             <Typography
                               variant="body2"
                               color="text.secondary"
@@ -729,7 +743,14 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                               variant="outlined"
                               sx={{ mb: 1 }}
                             >
-                              <Table size="small">
+                              <Table
+                                size="small"
+                                sx={{
+                                  "& td, & th": { py: 0.5, px: 1 },
+                                  "& tr:last-child td": { pb: 0.5 },
+                                  "& tr:first-child th": { pt: 0.5 },
+                                }}
+                              >
                                 <TableHead>
                                   <TableRow>
                                     <TableCell>Описание</TableCell>
@@ -767,7 +788,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                             </TableContainer>
                           </Box>
                         ) : (
-                          <Box sx={{ mb: 3 }}>
+                          <Box sx={{ mb: 2 }}>
                             <Typography
                               variant="body2"
                               color="text.secondary"
@@ -786,7 +807,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                         )}
 
                         {cashDepositsDetails.length > 0 ? (
-                          <Box sx={{ mb: 3 }}>
+                          <Box sx={{ mb: 2 }}>
                             <Typography
                               variant="body2"
                               color="text.secondary"
@@ -799,7 +820,14 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                               variant="outlined"
                               sx={{ mb: 1 }}
                             >
-                              <Table size="small">
+                              <Table
+                                size="small"
+                                sx={{
+                                  "& td, & th": { py: 0.5, px: 1 },
+                                  "& tr:last-child td": { pb: 0.5 },
+                                  "& tr:first-child th": { pt: 0.5 },
+                                }}
+                              >
                                 <TableHead>
                                   <TableRow>
                                     <TableCell>Описание</TableCell>
@@ -837,7 +865,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                             </TableContainer>
                           </Box>
                         ) : (
-                          <Box sx={{ mb: 3 }}>
+                          <Box sx={{ mb: 2 }}>
                             <Typography
                               variant="body2"
                               color="text.secondary"
@@ -855,7 +883,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
                           </Box>
                         )}
 
-                        <Box sx={{ mb: 3 }}>
+                        <Box sx={{ mb: 2 }}>
                           <Typography
                             variant="body2"
                             color="text.secondary"
@@ -898,15 +926,15 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
 
                   <Box
                     sx={{
-                      mt: 4,
+                      mt: 2,
                       textAlign: "center",
-                      p: 3,
+                      p: 2,
                       borderRadius: 3,
                       backgroundColor: "rgba(25, 118, 210, 0.04)",
                       border: "1px solid rgba(25, 118, 210, 0.1)",
                     }}
                   >
-                    <Typography variant="h5" color="primary" fontWeight="bold">
+                    <Typography variant="h6" color="primary" fontWeight="bold">
                       Конечное сальдо: {formatCurrency(finalBalance)}
                     </Typography>
                   </Box>
@@ -920,7 +948,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
             </>
           )}
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3 }}>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
           {submitSuccess ? (
             <Button
               onClick={handleClose}
