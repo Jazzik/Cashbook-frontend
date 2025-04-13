@@ -1,8 +1,5 @@
 pipeline {
   agent any
-  parameters {
-    string(name: 'STORE_ID', defaultValue: 'store1', description: 'Store/Environment to deploy')
-  }
   stages {
     stage('Build and Deploy Docker Container') {
       steps {
