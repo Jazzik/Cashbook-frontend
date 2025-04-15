@@ -83,27 +83,15 @@ pipeline {
       steps {
         unstash 'jenkins-env'
         script {
-          // Load environment variables directly into env
-          def envVars = readFile('jenkins_env.groovy')
-          // Execute the groovy file as shell commands to set environment variables
-          envVars.split('\n').each { line ->
-            if (line.trim()) {
-              def parts = line.split('=')
-              if (parts.size() == 2) {
-                env[parts[0].trim()] = parts[1].trim()
-              }
-            }
-          }
+          // Instead of parsing the file ourselves, use environment variables
+          // that are already set in the Configure stage
 
-          // Access variables from env
+          // The env.SHOPS variable is set in the Configure stage
           def shopsList = env.SHOPS.split(',')
+
           shopsList.each { shop ->
-            def shopPortVar = "${shop.toUpperCase()}_PORT"
-            def backendPortVar = "${shop.toUpperCase()}_BACKEND_PORT"
-
-            def shopPort = env[shopPortVar]
-            def backendPort = env[backendPortVar]
-
+            def shopUpperCase = shop.toUpperCase()
+            // These variables are set in the Configure stage
             bat '''
               REM Ensure Docker network exists
               docker network inspect cashbook-network || docker network create cashbook-network
@@ -116,8 +104,8 @@ pipeline {
               REM Run container with shop-specific parameters
               docker run --name ${shop}_frontend_container ^
                 --network cashbook-network ^
-                -d -p 127.0.0.1:${shopPort}:80 ^
-                -e BACKEND_URL=http://${shop}_backend_container:${backendPort}/api ^
+                -d -p 127.0.0.1:${env."${shopUpperCase}_PORT"}:80 ^
+                -e BACKEND_URL=http://${shop}_backend_container:${env."${shopUpperCase}_BACKEND_PORT"}/api ^
                 $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG
             """
           }
@@ -126,13 +114,12 @@ pipeline {
           echo 'Waiting for containers to initialize...'
           sleep 10
 
-          // Reuse environment variables from previous script step
+          // No need to reread env vars since they're already in env
           def shopsList = env.SHOPS.split(',')
           shopsList.each { shop ->
-            def shopPortVar = "${shop.toUpperCase()}_PORT"
-            def shopPort = env[shopPortVar]
+            def shopUpperCase = shop.toUpperCase()
 
-            echo "Checking health for ${shop} on port ${shopPort}"
+            echo "Checking health for ${shop} on port ${env."${shopUpperCase}_PORT"}"
             bat """
               docker exec ${shop}_frontend_container curl -f http://localhost/internal-api/health || (
                 echo "API Health Check Failed: Nginx routing to backend failed for ${shop}" && exit 1
