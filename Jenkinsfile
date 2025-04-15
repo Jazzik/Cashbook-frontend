@@ -102,13 +102,22 @@ pipeline {
               docker rm -f ${shop}_frontend_container || exit /b 0
             """
             bat """
-              # Run container with shop-specific parameters
-              docker run --name ${shop}_frontend_container \
-                --network cashbook-network \
-                -d -p 127.0.0.1:${port}:80 \
-                -e BACKEND_URL=http://${shop}_backend_container:${backendPort}/api \
+              REM Run container with shop-specific parameters
+              docker run --name ${shop}_frontend_container ^
+                --network cashbook-network ^
+                -d -p 127.0.0.1:${port}:80 ^
+                -e BACKEND_URL=http://${shop}_backend_container:${backendPort}/api ^
                 $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG
-              """
+            """
+            bat """
+              REM Check container logs to diagnose startup issues
+              docker logs ${shop}_frontend_container
+            """
+            bat """
+              REM Simple check that the container is running and can execute commands
+              docker exec ${shop}_frontend_container echo "Container is running"
+              docker exec ${shop}_frontend_container env | grep BACKEND_URL
+            """
           }
         }
         script {
