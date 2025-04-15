@@ -102,12 +102,14 @@ pipeline {
               docker rm -f ${shop}_frontend_container || exit /b 0
             """
             bat """
-              REM Run container with shop-specific parameters
+              REM Run container with shop-specific parameters and bypass problematic entrypoint
               docker run --name ${shop}_frontend_container ^
                 --network cashbook-network ^
                 -d -p 127.0.0.1:${port}:80 ^
                 -e BACKEND_URL=http://${shop}_backend_container:${backendPort}/api ^
-                $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG
+                --entrypoint /bin/sh ^
+                $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG ^
+                -c "envsubst '$BACKEND_URL' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
             """
             bat """
               REM Check container logs to diagnose startup issues
