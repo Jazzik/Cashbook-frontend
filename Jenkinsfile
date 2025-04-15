@@ -83,12 +83,18 @@ pipeline {
       steps {
         unstash 'jenkins-env'
         script {
+          // Load environment variables properly
           def envVars = readFile('jenkins_env.groovy')
-          evaluate(envVars)
-          def shopsList = SHOPS.split(',')
+          // Use binding to properly scope variables
+          def binding = new Binding()
+          def shell = new GroovyShell(binding)
+          shell.evaluate(envVars)
+
+          // Access variables through binding
+          def shopsList = binding.getVariable('SHOPS').split(',')
           shopsList.each { shop ->
-            def shopPort = this."${shop.toUpperCase()}_PORT"
-            def backendPort = this."${shop.toUpperCase()}_BACKEND_PORT"
+            def shopPort = binding.getVariable("${shop.toUpperCase()}_PORT")
+            def backendPort = binding.getVariable("${shop.toUpperCase()}_BACKEND_PORT")
             bat '''
               REM Ensure Docker network exists
               docker network inspect cashbook-network || docker network create cashbook-network
@@ -110,11 +116,16 @@ pipeline {
         script {
           echo 'Waiting for containers to initialize...'
           sleep 10
+
+          // Reload environment variables with proper binding
           def envVars = readFile('jenkins_env.groovy')
-          evaluate(envVars)
-          def shopsList = SHOPS.split(',')
+          def binding = new Binding()
+          def shell = new GroovyShell(binding)
+          shell.evaluate(envVars)
+
+          def shopsList = binding.getVariable('SHOPS').split(',')
           shopsList.each { shop ->
-            def shopPort = this."${shop.toUpperCase()}_PORT"
+            def shopPort = binding.getVariable("${shop.toUpperCase()}_PORT")
             echo "Checking health for ${shop} on port ${shopPort}"
             bat """
               docker exec ${shop}_frontend_container curl -f http://localhost/internal-api/health || (
