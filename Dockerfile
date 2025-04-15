@@ -29,15 +29,11 @@ COPY --from=build /app/build /usr/share/nginx/html
 # Copy nginx config as a template
 COPY nginx.conf /etc/nginx/conf.d/default.conf.template
 
-# Copy the entrypoint script
-COPY docker-entrypoint.sh /
-RUN chmod +x /docker-entrypoint.sh
-
 # Expose port 80
 EXPOSE 80
 
 # Set default environment variable
 ENV BACKEND_URL http://cashbook_backend_container:5000/api
 
-# Start Nginx with the entrypoint script
-ENTRYPOINT ["/docker-entrypoint.sh"] 
+# Create final configuration from template and start Nginx
+CMD sh -c "envsubst '\$BACKEND_URL' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'" 
