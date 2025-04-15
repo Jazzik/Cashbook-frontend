@@ -85,7 +85,7 @@ pipeline {
           envVars.each { line ->
             if (line.trim()) {
               def (key, value) = line.split('=', 2)
-              env[key] = value
+              env."${key}" = value
             }
           }
           def shopsList = SHOPS.split(',')
@@ -117,7 +117,7 @@ pipeline {
           envVars.each { line ->
             if (line.trim()) {
               def (key, value) = line.split('=', 2)
-              env[key] = value
+              env."${key}" = value
             }
           }
           def shopsList = SHOPS.split(',')
@@ -165,7 +165,7 @@ pipeline {
           envVars.each { line ->
             if (line.trim()) {
               def (key, value) = line.split('=', 2)
-              env[key] = value
+              env."${key}" = value
             }
           }
 
@@ -213,7 +213,7 @@ pipeline {
           envVars.each { line ->
             if (line.trim()) {
               def (key, value) = line.split('=', 2)
-              env[key] = value
+              env."${key}" = value
             }
           }
           def shopList = SHOPS.split(',')
