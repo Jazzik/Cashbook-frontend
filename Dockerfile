@@ -1,5 +1,5 @@
 # Stage 1: Build the React application
-FROM node:16-alpine as build
+FROM node:16-alpine AS build
 
 # Set working directory
 WORKDIR /app
@@ -33,7 +33,7 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf.template
 EXPOSE 80
 
 # Set default environment variable
-ENV BACKEND_URL http://cashbook_backend_container:5000/api
+ENV BACKEND_URL=http://cashbook_backend_container:5000/api
 
 # Create final configuration from template and start Nginx
-CMD sh -c "envsubst '\$BACKEND_URL' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'" 
+CMD ["sh", "-c", "envsubst '$BACKEND_URL' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"] 
