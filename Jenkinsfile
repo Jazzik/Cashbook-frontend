@@ -54,7 +54,7 @@ pipeline {
             echo "Branch ${env.BRANCH_NAME} not configured for deployment"
             env.SHOPS = ''
           }
-           // Write dynamic env vars to file and stash for later stages
+          // Write dynamic env vars to file and stash for later stages
           writeFile file: 'jenkins_env.groovy', text: envVars
           stash name: 'jenkins-env', includes: 'jenkins_env.groovy'
         }
@@ -73,7 +73,6 @@ pipeline {
       }
     }
 
-
     stage('Test container in test environment') {
       when {
         branch 'test'
@@ -86,8 +85,8 @@ pipeline {
           evaluate(envVars)
           def shopList = SHOPS.split(',')
           shopList.each { shop ->
-            def port = this."${shop.toUpperCase()}_PORT"
-            def backendPort = this."${shop.toUpperCase()}_BACKEND_PORT"
+            def port = env."${shop.toUpperCase()}_PORT"
+            def backendPort = env."${shop.toUpperCase()}_BACKEND_PORT"
             bat '''
                 REM Ensure Docker network exists
                 docker network inspect cashbook-network || docker network create cashbook-network
@@ -113,7 +112,7 @@ pipeline {
           evaluate(envVars)
           def shopsList = SHOPS.split(',')
           shopsList.each { shop ->
-            def shopPort = this."${shop.toUpperCase()}_PORT"
+            def shopPort = env."${shop.toUpperCase()}_PORT"
             echo "Checking health for ${shop} on port ${shopPort}"
             bat """
               docker exec ${shop}_frontend_container curl -f http://localhost/internal-api/health || (
@@ -163,10 +162,10 @@ pipeline {
           // Deploy containers
           def shopsList = SHOPS.split(',')
           shopsList.each { shop ->
-            def shopPort = this."${shop.toUpperCase()}_PORT"
-            def backendPort = this."${shop.toUpperCase()}_BACKEND_PORT"
+            def shopPort = env."${shop.toUpperCase()}_PORT"
+            def backendPort = env."${shop.toUpperCase()}_BACKEND_PORT"
             echo "Deploying ${shop} on port ${shopPort}"
-            
+
             sh '''
             # Ensure Docker network exists
             docker network inspect cashbook-network || docker network create cashbook-network
@@ -183,7 +182,6 @@ pipeline {
                 -e BACKEND_URL=http://${shop}_backend_container:${backendPort}/api \
                 $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG
             """
-            
           }
         }
       }
