@@ -53,6 +53,8 @@ pipeline {
           } else {
             echo "Branch ${env.BRANCH_NAME} not configured for deployment"
             env.SHOPS = ''
+            //make pipeline fail
+            error 'Branch not configured for deployment'
           }
           // Write dynamic env vars to file and stash for later stages
           writeFile file: 'jenkins_env.groovy', text: envVars
@@ -73,52 +75,36 @@ pipeline {
       }
     }
 
+
     stage('Test container in test environment') {
+      agent { label 'build-node' }
       when {
         branch 'test'
       }
-      agent { label 'build-node' }
       steps {
         unstash 'jenkins-env'
         script {
           def envVars = readFile('jenkins_env.groovy')
-          // Set SHOPS from env file
-          if (envVars.contains('SHOPS=')) {
-            def shopsLine = envVars.split('\n').find { it.trim().startsWith('SHOPS=') }
-            if (shopsLine) {
-              env.SHOPS = shopsLine.split('=', 2)[1]
-            }
-          }
-          def shopsList = env.SHOPS.split(',')
+          evaluate(envVars)
+          def shopsList = SHOPS.split(',')
           shopsList.each { shop ->
-            def port = env."${shop.toUpperCase()}_PORT"
-            def backendPort = env."${shop.toUpperCase()}_BACKEND_PORT"
-            bat '''
-                REM Ensure Docker network exists
-                docker network inspect cashbook-network || docker network create cashbook-network
-              '''
-            bat """
-              REM Stop and remove if container exists
-              docker rm -f ${shop}_frontend_container || exit /b 0
-            """
-            bat """
-              REM Run container with shop-specific parameters and bypass problematic entrypoint
-              docker run --name ${shop}_frontend_container ^
-                --network cashbook-network ^
-                -d -p 127.0.0.1:${port}:80 ^
-                -e BACKEND_URL=http://${shop}_backend_container:${backendPort}/api ^
-                --entrypoint /bin/sh ^
-                $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG ^
-                -c "envsubst '$BACKEND_URL' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
-            """
-            bat """
-              REM Check container logs to diagnose startup issues
-              docker logs ${shop}_frontend_container
-            """
-            bat """
-              REM Simple check that the container is running and can execute commands
-              docker exec ${shop}_frontend_container echo "Container is running"
-              docker exec ${shop}_frontend_container env | grep BACKEND_URL
+          def shopPort = this."${shop.toUpperCase()}_PORT"
+          def backendPort = this."${shop.toUpperCase()}_BACKEND_PORT"
+          bat '''
+              REM Ensure Docker network exists
+              docker network inspect cashbook-network || docker network create cashbook-network
+            '''
+          bat """
+            REM Stop and remove if container exists
+            docker rm -f ${shop}_frontend_container || exit /b 0
+          """
+          bat """
+            # Run container with shop-specific parameters
+            docker run --name ${shop}_frontend_container \
+              --network cashbook-network \
+              -d -p 127.0.0.1:${shopPort}:80 \
+              -e BACKEND_URL=http://${shop}_backend_container:${backendPort}/api \
+              $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG
             """
           }
         }
@@ -126,16 +112,10 @@ pipeline {
           echo 'Waiting for containers to initialize...'
           sleep 10
           def envVars = readFile('jenkins_env.groovy')
-          // Set SHOPS from env file
-          if (envVars.contains('SHOPS=')) {
-            def shopsLine = envVars.split('\n').find { it.trim().startsWith('SHOPS=') }
-            if (shopsLine) {
-              env.SHOPS = shopsLine.split('=', 2)[1]
-            }
-          }
-          def shopsList = env.SHOPS.split(',')
+          evaluate(envVars)
+          def shopsList = SHOPS.split(',')
           shopsList.each { shop ->
-            def shopPort = env."${shop.toUpperCase()}_PORT"
+            def shopPort = this."${shop.toUpperCase()}_PORT"
             echo "Checking health for ${shop} on port ${shopPort}"
             bat """
               docker exec ${shop}_frontend_container curl -f http://localhost/internal-api/health || (
@@ -175,14 +155,7 @@ pipeline {
         script {
           // Load dynamic env vars
           def envVars = readFile('jenkins_env.groovy')
-          // Set SHOPS from env file
-          if (envVars.contains('SHOPS=')) {
-            def shopsLine = envVars.split('\n').find { it.trim().startsWith('SHOPS=') }
-            if (shopsLine) {
-              env.SHOPS = shopsLine.split('=', 2)[1]
-            }
-          }
-          def shopsList = env.SHOPS.split(',')
+          evaluate(envVars)
 
           // Pull the image using the latest tag
           sh """
@@ -190,11 +163,12 @@ pipeline {
             docker pull $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG
             """
           // Deploy containers
+          def shopsList = SHOPS.split(',')
           shopsList.each { shop ->
-            def shopPort = env."${shop.toUpperCase()}_PORT"
-            def backendPort = env."${shop.toUpperCase()}_BACKEND_PORT"
+            def shopPort = this."${shop.toUpperCase()}_PORT"
+            def backendPort = this."${shop.toUpperCase()}_BACKEND_PORT"
             echo "Deploying ${shop} on port ${shopPort}"
-
+            
             sh '''
             # Ensure Docker network exists
             docker network inspect cashbook-network || docker network create cashbook-network
@@ -211,6 +185,7 @@ pipeline {
                 -e BACKEND_URL=http://${shop}_backend_container:${backendPort}/api \
                 $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG
             """
+            
           }
         }
       }
@@ -224,14 +199,8 @@ pipeline {
         script {
           // Load dynamic env vars
           def envVars = readFile('jenkins_env.groovy')
-          // Set SHOPS from env file
-          if (envVars.contains('SHOPS=')) {
-            def shopsLine = envVars.split('\n').find { it.trim().startsWith('SHOPS=') }
-            if (shopsLine) {
-              env.SHOPS = shopsLine.split('=', 2)[1]
-            }
-          }
-          def shopList = env.SHOPS.split(',')
+          evaluate(envVars)
+          def shopList = SHOPS.split(',')
           shopList.each { shop ->
             // Execute curl from inside the frontend container to test the internal nginx routing
             sh """
