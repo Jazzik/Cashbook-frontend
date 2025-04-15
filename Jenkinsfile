@@ -75,7 +75,6 @@ pipeline {
       }
     }
 
-
     stage('Test container in test environment') {
       agent { label 'build-node' }
       when {
@@ -88,24 +87,24 @@ pipeline {
           evaluate(envVars)
           def shopsList = SHOPS.split(',')
           shopsList.each { shop ->
-          def shopPort = this."${shop.toUpperCase()}_PORT"
-          def backendPort = this."${shop.toUpperCase()}_BACKEND_PORT"
-          bat '''
+            def shopPort = this."${shop.toUpperCase()}_PORT"
+            def backendPort = this."${shop.toUpperCase()}_BACKEND_PORT"
+            bat '''
               REM Ensure Docker network exists
               docker network inspect cashbook-network || docker network create cashbook-network
             '''
-          bat """
+            bat """
             REM Stop and remove if container exists
             docker rm -f ${shop}_frontend_container || exit /b 0
           """
-          bat """
-            # Run container with shop-specific parameters
-            docker run --name ${shop}_frontend_container \
-              --network cashbook-network \
-              -d -p 127.0.0.1:${shopPort}:80 \
-              -e BACKEND_URL=http://${shop}_backend_container:${backendPort}/api \
+            bat """
+            REM Run container with shop-specific parameters
+            docker run --name ${shop}_frontend_container ^
+              --network cashbook-network ^
+              -d -p 127.0.0.1:${shopPort}:80 ^
+              -e BACKEND_URL=http://${shop}_backend_container:${backendPort}/api ^
               $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG
-            """
+          """
           }
         }
         script {
@@ -168,7 +167,7 @@ pipeline {
             def shopPort = this."${shop.toUpperCase()}_PORT"
             def backendPort = this."${shop.toUpperCase()}_BACKEND_PORT"
             echo "Deploying ${shop} on port ${shopPort}"
-            
+
             sh '''
             # Ensure Docker network exists
             docker network inspect cashbook-network || docker network create cashbook-network
@@ -185,7 +184,6 @@ pipeline {
                 -e BACKEND_URL=http://${shop}_backend_container:${backendPort}/api \
                 $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG
             """
-            
           }
         }
       }
