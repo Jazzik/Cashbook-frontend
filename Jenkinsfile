@@ -83,8 +83,8 @@ pipeline {
         script {
           def envVars = readFile('jenkins_env.groovy')
           evaluate(envVars)
-          def shopList = SHOPS.split(',')
-          shopList.each { shop ->
+          def shopsList = SHOPS.split(',')
+          shopsList.each { shop ->
             def port = env."${shop.toUpperCase()}_PORT"
             def backendPort = env."${shop.toUpperCase()}_BACKEND_PORT"
             bat '''
