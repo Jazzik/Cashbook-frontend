@@ -83,49 +83,55 @@ pipeline {
       steps {
         unstash 'jenkins-env'
         script {
-          // Load environment variables properly
+          // Load environment variables directly into env
           def envVars = readFile('jenkins_env.groovy')
-          // Use binding to properly scope variables
-          def binding = new Binding()
-          def shell = new GroovyShell(binding)
-          shell.evaluate(envVars)
+          // Execute the groovy file as shell commands to set environment variables
+          envVars.split('\n').each { line ->
+            if (line.trim()) {
+              def parts = line.split('=')
+              if (parts.size() == 2) {
+                env[parts[0].trim()] = parts[1].trim()
+              }
+            }
+          }
 
-          // Access variables through binding
-          def shopsList = binding.getVariable('SHOPS').split(',')
+          // Access variables from env
+          def shopsList = env.SHOPS.split(',')
           shopsList.each { shop ->
-            def shopPort = binding.getVariable("${shop.toUpperCase()}_PORT")
-            def backendPort = binding.getVariable("${shop.toUpperCase()}_BACKEND_PORT")
+            def shopPortVar = "${shop.toUpperCase()}_PORT"
+            def backendPortVar = "${shop.toUpperCase()}_BACKEND_PORT"
+
+            def shopPort = env[shopPortVar]
+            def backendPort = env[backendPortVar]
+
             bat '''
               REM Ensure Docker network exists
               docker network inspect cashbook-network || docker network create cashbook-network
             '''
             bat """
-            REM Stop and remove if container exists
-            docker rm -f ${shop}_frontend_container || exit /b 0
-          """
+              REM Stop and remove if container exists
+              docker rm -f ${shop}_frontend_container || exit /b 0
+            """
             bat """
-            REM Run container with shop-specific parameters
-            docker run --name ${shop}_frontend_container ^
-              --network cashbook-network ^
-              -d -p 127.0.0.1:${shopPort}:80 ^
-              -e BACKEND_URL=http://${shop}_backend_container:${backendPort}/api ^
-              $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG
-          """
+              REM Run container with shop-specific parameters
+              docker run --name ${shop}_frontend_container ^
+                --network cashbook-network ^
+                -d -p 127.0.0.1:${shopPort}:80 ^
+                -e BACKEND_URL=http://${shop}_backend_container:${backendPort}/api ^
+                $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG
+            """
           }
         }
         script {
           echo 'Waiting for containers to initialize...'
           sleep 10
 
-          // Reload environment variables with proper binding
-          def envVars = readFile('jenkins_env.groovy')
-          def binding = new Binding()
-          def shell = new GroovyShell(binding)
-          shell.evaluate(envVars)
-
-          def shopsList = binding.getVariable('SHOPS').split(',')
+          // Reuse environment variables from previous script step
+          def shopsList = env.SHOPS.split(',')
           shopsList.each { shop ->
-            def shopPort = binding.getVariable("${shop.toUpperCase()}_PORT")
+            def shopPortVar = "${shop.toUpperCase()}_PORT"
+            def shopPort = env[shopPortVar]
+
             echo "Checking health for ${shop} on port ${shopPort}"
             bat """
               docker exec ${shop}_frontend_container curl -f http://localhost/internal-api/health || (
