@@ -81,8 +81,13 @@ pipeline {
       steps {
         unstash 'jenkins-env'
         script {
-          def envVars = readFile('jenkins_env.groovy')
-          evaluate(envVars)
+          def envVars = readFile('jenkins_env.groovy').split('\n')
+          envVars.each { line ->
+            if (line.trim()) {
+              def (key, value) = line.split('=', 2)
+              env[key] = value
+            }
+          }
           def shopsList = SHOPS.split(',')
           shopsList.each { shop ->
             def port = env."${shop.toUpperCase()}_PORT"
@@ -108,8 +113,13 @@ pipeline {
         script {
           echo 'Waiting for containers to initialize...'
           sleep 10
-          def envVars = readFile('jenkins_env.groovy')
-          evaluate(envVars)
+          def envVars = readFile('jenkins_env.groovy').split('\n')
+          envVars.each { line ->
+            if (line.trim()) {
+              def (key, value) = line.split('=', 2)
+              env[key] = value
+            }
+          }
           def shopsList = SHOPS.split(',')
           shopsList.each { shop ->
             def shopPort = env."${shop.toUpperCase()}_PORT"
@@ -151,8 +161,13 @@ pipeline {
         unstash 'jenkins-env'
         script {
           // Load dynamic env vars
-          def envVars = readFile('jenkins_env.groovy')
-          evaluate(envVars)
+          def envVars = readFile('jenkins_env.groovy').split('\n')
+          envVars.each { line ->
+            if (line.trim()) {
+              def (key, value) = line.split('=', 2)
+              env[key] = value
+            }
+          }
 
           // Pull the image using the latest tag
           sh """
@@ -194,8 +209,13 @@ pipeline {
         unstash 'jenkins-env'
         script {
           // Load dynamic env vars
-          def envVars = readFile('jenkins_env.groovy')
-          evaluate(envVars)
+          def envVars = readFile('jenkins_env.groovy').split('\n')
+          envVars.each { line ->
+            if (line.trim()) {
+              def (key, value) = line.split('=', 2)
+              env[key] = value
+            }
+          }
           def shopList = SHOPS.split(',')
           shopList.each { shop ->
             // Execute curl from inside the frontend container to test the internal nginx routing
