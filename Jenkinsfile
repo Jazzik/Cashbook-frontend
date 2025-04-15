@@ -81,14 +81,15 @@ pipeline {
       steps {
         unstash 'jenkins-env'
         script {
-          def envVars = readFile('jenkins_env.groovy').split('\n')
-          envVars.each { line ->
-            if (line.trim()) {
-              def (key, value) = line.split('=', 2)
-              env."${key}" = value
+          def envVars = readFile('jenkins_env.groovy')
+          // Set SHOPS from env file
+          if (envVars.contains('SHOPS=')) {
+            def shopsLine = envVars.split('\n').find { it.trim().startsWith('SHOPS=') }
+            if (shopsLine) {
+              env.SHOPS = shopsLine.split('=', 2)[1]
             }
           }
-          def shopsList = SHOPS.split(',')
+          def shopsList = env.SHOPS.split(',')
           shopsList.each { shop ->
             def port = env."${shop.toUpperCase()}_PORT"
             def backendPort = env."${shop.toUpperCase()}_BACKEND_PORT"
@@ -113,14 +114,15 @@ pipeline {
         script {
           echo 'Waiting for containers to initialize...'
           sleep 10
-          def envVars = readFile('jenkins_env.groovy').split('\n')
-          envVars.each { line ->
-            if (line.trim()) {
-              def (key, value) = line.split('=', 2)
-              env."${key}" = value
+          def envVars = readFile('jenkins_env.groovy')
+          // Set SHOPS from env file
+          if (envVars.contains('SHOPS=')) {
+            def shopsLine = envVars.split('\n').find { it.trim().startsWith('SHOPS=') }
+            if (shopsLine) {
+              env.SHOPS = shopsLine.split('=', 2)[1]
             }
           }
-          def shopsList = SHOPS.split(',')
+          def shopsList = env.SHOPS.split(',')
           shopsList.each { shop ->
             def shopPort = env."${shop.toUpperCase()}_PORT"
             echo "Checking health for ${shop} on port ${shopPort}"
@@ -161,13 +163,15 @@ pipeline {
         unstash 'jenkins-env'
         script {
           // Load dynamic env vars
-          def envVars = readFile('jenkins_env.groovy').split('\n')
-          envVars.each { line ->
-            if (line.trim()) {
-              def (key, value) = line.split('=', 2)
-              env."${key}" = value
+          def envVars = readFile('jenkins_env.groovy')
+          // Set SHOPS from env file
+          if (envVars.contains('SHOPS=')) {
+            def shopsLine = envVars.split('\n').find { it.trim().startsWith('SHOPS=') }
+            if (shopsLine) {
+              env.SHOPS = shopsLine.split('=', 2)[1]
             }
           }
+          def shopsList = env.SHOPS.split(',')
 
           // Pull the image using the latest tag
           sh """
@@ -175,7 +179,6 @@ pipeline {
             docker pull $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG
             """
           // Deploy containers
-          def shopsList = SHOPS.split(',')
           shopsList.each { shop ->
             def shopPort = env."${shop.toUpperCase()}_PORT"
             def backendPort = env."${shop.toUpperCase()}_BACKEND_PORT"
@@ -209,14 +212,15 @@ pipeline {
         unstash 'jenkins-env'
         script {
           // Load dynamic env vars
-          def envVars = readFile('jenkins_env.groovy').split('\n')
-          envVars.each { line ->
-            if (line.trim()) {
-              def (key, value) = line.split('=', 2)
-              env."${key}" = value
+          def envVars = readFile('jenkins_env.groovy')
+          // Set SHOPS from env file
+          if (envVars.contains('SHOPS=')) {
+            def shopsLine = envVars.split('\n').find { it.trim().startsWith('SHOPS=') }
+            if (shopsLine) {
+              env.SHOPS = shopsLine.split('=', 2)[1]
             }
           }
-          def shopList = SHOPS.split(',')
+          def shopList = env.SHOPS.split(',')
           shopList.each { shop ->
             // Execute curl from inside the frontend container to test the internal nginx routing
             sh """
