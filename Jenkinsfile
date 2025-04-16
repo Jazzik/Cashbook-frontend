@@ -165,9 +165,6 @@ pipeline {
     }
     stage('Deploy Containers') {
       agent { label 'deploy-node' }
-      when {
-        branch 'main'
-      }
       steps {
         unstash 'source-code'
         unstash 'jenkins-env'
@@ -210,6 +207,7 @@ pipeline {
     }
 
     stage('Test deployment containers') {
+      agent { label 'deploy-node' }
       steps {
         sh 'sleep 10' // Give container a moment to start up
         unstash 'source-code'
