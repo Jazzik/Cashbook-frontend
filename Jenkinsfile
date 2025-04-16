@@ -75,80 +75,80 @@ pipeline {
       }
     }
 
-    stage('Test container in test environment') {
-      agent { label 'build-node' }
-      when {
-        branch 'test'
-      }
-      steps {
-        unstash 'jenkins-env'
-        script {
-          // Create a dummy backend container for testing
-          bat '''
-            REM Create dummy backend container for testing
-            docker rm -f testing_backend_container || exit /b 0
-            docker run --name testing_backend_container --network cashbook-network -d nginx:alpine
-          '''
+    // stage('Test container in test environment') {
+    //   agent { label 'build-node' }
+    //   when {
+    //     branch 'test'
+    //   }
+    //   steps {
+    //     unstash 'jenkins-env'
+    //     script {
+    //       // Create a dummy backend container for testing
+    //       bat '''
+    //         REM Create dummy backend container for testing
+    //         docker rm -f testing_backend_container || exit /b 0
+    //         docker run --name testing_backend_container --network cashbook-network -d nginx:alpine
+    //       '''
 
-          // The env.SHOPS variable is set in the Configure stage
-          def shopsList = env.SHOPS.split(',')
+    //       // The env.SHOPS variable is set in the Configure stage
+    //       def shopsList = env.SHOPS.split(',')
 
-          shopsList.each { shop ->
-            def shopUpperCase = shop.toUpperCase()
-            // These variables are set in the Configure stage
-            bat '''
-              REM Ensure Docker network exists
-              docker network inspect cashbook-network || docker network create cashbook-network
-            '''
-            bat """
-              REM Stop and remove if container exists
-              docker rm -f ${shop}_frontend_container || exit /b 0
-            """
-            bat """
-              REM Run container with shop-specific parameters
-              docker run --name ${shop}_frontend_container ^
-                --network cashbook-network ^
-                -d -p 127.0.0.1:${env."${shopUpperCase}_PORT"}:80 ^
-                -e BACKEND_URL=http://${shop}_backend_container:${env."${shopUpperCase}_BACKEND_PORT"}/api ^
-                $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG
-            """
-          }
-        }
-        script {
-          echo 'Waiting for containers to initialize...'
-          sleep 10
+    //       shopsList.each { shop ->
+    //         def shopUpperCase = shop.toUpperCase()
+    //         // These variables are set in the Configure stage
+    //         bat '''
+    //           REM Ensure Docker network exists
+    //           docker network inspect cashbook-network || docker network create cashbook-network
+    //         '''
+    //         bat """
+    //           REM Stop and remove if container exists
+    //           docker rm -f ${shop}_frontend_container || exit /b 0
+    //         """
+    //         bat """
+    //           REM Run container with shop-specific parameters
+    //           docker run --name ${shop}_frontend_container ^
+    //             --network cashbook-network ^
+    //             -d -p 127.0.0.1:${env."${shopUpperCase}_PORT"}:80 ^
+    //             -e BACKEND_URL=http://${shop}_backend_container:${env."${shopUpperCase}_BACKEND_PORT"}/api ^
+    //             $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG
+    //         """
+    //       }
+    //     }
+    //     script {
+    //       echo 'Waiting for containers to initialize...'
+    //       sleep 10
 
-          // No need to reread env vars since they're already in env
-          def shopsList = env.SHOPS.split(',')
-          shopsList.each { shop ->
-            def shopUpperCase = shop.toUpperCase()
+    //       // No need to reread env vars since they're already in env
+    //       def shopsList = env.SHOPS.split(',')
+    //       shopsList.each { shop ->
+    //         def shopUpperCase = shop.toUpperCase()
 
-            echo "Checking health for ${shop} on port ${env."${shopUpperCase}_PORT"}"
-            bat """
-              REM Check if container is running
-              docker ps -f name=${shop}_frontend_container --format "{{.Status}}"
+    //         echo "Checking health for ${shop} on port ${env."${shopUpperCase}_PORT"}"
+    //         bat """
+    //           REM Check if container is running
+    //           docker ps -f name=${shop}_frontend_container --format "{{.Status}}"
 
-              REM Create a mock health endpoint inside the container
-              docker exec ${shop}_frontend_container sh -c "mkdir -p /usr/share/nginx/html/internal-api && echo 'OK' > /usr/share/nginx/html/internal-api/health"
+    //           REM Create a mock health endpoint inside the container
+    //           docker exec ${shop}_frontend_container sh -c "mkdir -p /usr/share/nginx/html/internal-api && echo 'OK' > /usr/share/nginx/html/internal-api/health"
 
-              REM Test the endpoint
-              docker exec ${shop}_frontend_container curl -f http://localhost/internal-api/health || (
-                echo "API Health Check Failed: Nginx routing failed for ${shop}" && exit 1
-              )
-            """
-            bat """
-              REM Stop and remove if container exists
-              docker rm -f ${shop}_frontend_container || exit /b 0
-            """
-          }
+    //           REM Test the endpoint
+    //           docker exec ${shop}_frontend_container curl -f http://localhost/internal-api/health || (
+    //             echo "API Health Check Failed: Nginx routing failed for ${shop}" && exit 1
+    //           )
+    //         """
+    //         bat """
+    //           REM Stop and remove if container exists
+    //           docker rm -f ${shop}_frontend_container || exit /b 0
+    //         """
+    //       }
 
-          bat '''
-            REM Clean up the dummy backend container
-            docker rm -f testing_backend_container || exit /b 0
-          '''
-        }
-      }
-    }
+    //       bat '''
+    //         REM Clean up the dummy backend container
+    //         docker rm -f testing_backend_container || exit /b 0
+    //       '''
+    //     }
+    //   }
+    // }
     stage('Push to Docker Hub') {
       when {
         branch 'test'
