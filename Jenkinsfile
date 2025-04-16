@@ -18,7 +18,7 @@ pipeline {
       }
     }
     stage('Configure') {
-      agent { label 'build-node' }
+      agent { label 'deploy-node' }
       steps {
         script {
           env.COMMIT_HASH = env.GIT_COMMIT
@@ -163,15 +163,16 @@ pipeline {
         """
       }
     }
+
     stage('Deploy Containers') {
       agent { label 'deploy-node' }
       steps {
-        unstash 'source-code'
-        unstash 'jenkins-env'
+        // unstash 'source-code'
+        // unstash 'jenkins-env'
         script {
-          // Load dynamic env vars
-          def envVars = readFile('jenkins_env.groovy')
-          evaluate(envVars)
+          // // Load dynamic env vars
+          // def envVars = readFile('jenkins_env.groovy')
+          // evaluate(envVars)
 
           // Pull the image using the latest tag
           sh """
@@ -210,12 +211,12 @@ pipeline {
       agent { label 'deploy-node' }
       steps {
         sh 'sleep 10' // Give container a moment to start up
-        unstash 'source-code'
-        unstash 'jenkins-env'
+        // unstash 'source-code'
+        // unstash 'jenkins-env'
         script {
           // Load dynamic env vars
-          def envVars = readFile('jenkins_env.groovy')
-          evaluate(envVars)
+          // def envVars = readFile('jenkins_env.groovy')
+          // evaluate(envVars)
           def shopList = SHOPS.split(',')
           shopList.each { shop ->
             // Execute curl from inside the frontend container to test the internal nginx routing
