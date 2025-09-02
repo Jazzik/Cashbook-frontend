@@ -129,7 +129,7 @@ const CashWithdrawalForm: React.FC<CashWithdrawalFormProps> = ({
     }
   };
 
-  // Конечное сальдо после текущей выемки
+  // Конечный остаток после текущей выемки
   const finalBalanceAfterCurrentWithdrawal = Math.max(
     0,
     cashInRegister.total - cashWithdrawal.total
@@ -174,7 +174,7 @@ const CashWithdrawalForm: React.FC<CashWithdrawalFormProps> = ({
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
         <Box sx={{ display: "flex", alignItems: "center" }}>
           <SavingsIcon sx={{ mr: 1, fontSize: "1rem" }} />
-          <Typography variant="body2">Конечное сальдо:</Typography>
+          <Typography variant="body2">Конечный остаток:</Typography>
         </Box>
         <Typography variant="body1" sx={{ fontWeight: "bold" }}>
           {formatCurrency(finalBalanceAfterCurrentWithdrawal)}
@@ -260,7 +260,7 @@ const CashWithdrawalForm: React.FC<CashWithdrawalFormProps> = ({
             </Box>
             <Box>
               <Typography variant="body2" color="text.secondary">
-                Конечное сальдо (расчетное):
+                Конечный остаток (расчетное):
               </Typography>
               <Typography variant="h6">
                 {formatCurrency(estimatedFinalBalance)}

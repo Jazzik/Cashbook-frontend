@@ -26,6 +26,14 @@ export interface Expense {
     amount: number;
 }
 
+// Transfer entry structure (for terminal transfers)
+export interface Transfer {
+    id: string;
+    name: string;
+    amount: number;
+    timestamp: string; // ISO string of creation time
+}
+
 // Cash return entry structure
 export interface CashReturn {
     id: string;
@@ -60,6 +68,10 @@ export interface ShiftData {
     terminal: number;
     terminalReturns: number;
     terminalTransfer: number;
+    transfers?: {
+        items: Transfer[];
+        total: number;
+    };
     cashInRegister: CashWithDenominations;
     expenses: Expense[];
     cashReturns: {

@@ -5,6 +5,7 @@ import React, {
   ReactNode,
   useEffect,
   useCallback,
+  useRef,
 } from "react";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -15,6 +16,7 @@ import {
   emptyDenominations,
   CashReturn,
   CashDeposit,
+  Transfer,
 } from "../types";
 import { updateCashWithDenominations } from "../utils/calculations";
 
@@ -34,14 +36,21 @@ interface ShiftContextType {
   terminal: number;
   terminalReturns: number;
   terminalTransfer: number;
+  transfers: {
+    items: Transfer[];
+    total: number;
+  };
   cashInRegister: CashWithDenominations;
   cashWithdrawal: CashWithDenominations;
   finalBalance: number;
 
   // State update functions
   updateInitialBalance: (denominations: Denominations) => void;
+  updateInitialBalanceTotal: (amount: number) => void;
   addExpense: (name: string, amount: number) => void;
   removeExpense: (id: string) => void;
+  addTransfer: (name: string, amount: number) => void;
+  removeTransfer: (id: string) => void;
   addCashReturn: (name: string, amount: number) => void;
   removeCashReturn: (id: string) => void;
   addCashDeposit: (name: string, amount: number) => void;
@@ -65,6 +74,7 @@ const ShiftContext = createContext<ShiftContextType | undefined>(undefined);
 export const ShiftProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
+  const STORAGE_KEY = "shiftState";
   // State for each section of the form
   const [initialBalance, setInitialBalance] = useState<CashWithDenominations>({
     denominations: { ...emptyDenominations },
@@ -93,6 +103,14 @@ export const ShiftProvider: React.FC<{ children: ReactNode }> = ({
   const [terminalReturns, setTerminalReturns] = useState<number>(0);
   const [terminalTransfer, setTerminalTransfer] = useState<number>(0);
 
+  const [transfers, setTransfers] = useState<{
+    items: Transfer[];
+    total: number;
+  }>({
+    items: [],
+    total: 0,
+  });
+
   const [cashInRegister, setCashInRegister] = useState<CashWithDenominations>({
     denominations: { ...emptyDenominations },
     total: 0,
@@ -104,10 +122,18 @@ export const ShiftProvider: React.FC<{ children: ReactNode }> = ({
   });
 
   const [finalBalance, setFinalBalance] = useState<number>(0);
+  const hasHydratedRef = useRef(false);
 
   // Update functions
   const updateInitialBalance = (denominations: Denominations) => {
     setInitialBalance(updateCashWithDenominations(denominations));
+  };
+
+  const updateInitialBalanceTotal = (amount: number) => {
+    setInitialBalance({
+      denominations: { ...emptyDenominations },
+      total: Math.max(0, Number.isFinite(amount) ? amount : 0),
+    });
   };
 
   const addExpense = (name: string, amount: number) => {
@@ -165,7 +191,28 @@ export const ShiftProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const updateTerminalTransfer = (amount: number) => {
+    // Allow manual override, but keep transfers total independent
     setTerminalTransfer(amount);
+  };
+
+  const addTransfer = (name: string, amount: number) => {
+    const newTransfer: Transfer = {
+      id: uuidv4(),
+      name,
+      amount,
+      timestamp: new Date().toISOString(),
+    };
+    const newItems = [...transfers.items, newTransfer];
+    const newTotal = newItems.reduce((sum, t) => sum + t.amount, 0);
+    setTransfers({ items: newItems, total: newTotal });
+    setTerminalTransfer(newTotal);
+  };
+
+  const removeTransfer = (id: string) => {
+    const newItems = transfers.items.filter((t) => t.id !== id);
+    const newTotal = newItems.reduce((sum, t) => sum + t.amount, 0);
+    setTransfers({ items: newItems, total: newTotal });
+    setTerminalTransfer(newTotal);
   };
 
   const updateCashInRegister = (denominations: Denominations) => {
@@ -177,7 +224,7 @@ export const ShiftProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const calculateFinalBalance = useCallback(() => {
-    // Конечное сальдо - это сколько денег должно остаться в кассе в конце смены
+    // Конечный остаток - это сколько денег должно остаться в кассе в конце смены
     // Рассчитывается как разница между наличными в кассе и выемкой из кассы
     // Формула максимально проста и отражает реальное положение вещей
 
@@ -186,7 +233,7 @@ export const ShiftProvider: React.FC<{ children: ReactNode }> = ({
       cashInRegister.total - // Наличные в кассе (фактический остаток, который кассир посчитал)
       cashWithdrawal.total; // Выемка из кассы (деньги, которые забирают из кассы в конце смены)
 
-    // Конечное сальдо не может быть отрицательным по определению -
+    // Конечный остаток не может быть отрицательным по определению -
     // невозможно забрать из кассы больше денег, чем там есть
     finalBalanceValue = Math.max(0, finalBalanceValue);
 
@@ -206,6 +253,154 @@ export const ShiftProvider: React.FC<{ children: ReactNode }> = ({
     updateFinalBalance();
   }, [cashInRegister.total, cashWithdrawal.total, updateFinalBalance]);
 
+  // Keep terminalTransfer always in sync with transfers total
+  useEffect(() => {
+    setTerminalTransfer(transfers.total);
+  }, [transfers.total]);
+
+  // Load saved shift state on mount
+  useEffect(() => {
+    try {
+      const saved =
+        typeof window !== "undefined"
+          ? localStorage.getItem(STORAGE_KEY)
+          : null;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object") {
+          if (
+            parsed.initialBalance &&
+            typeof parsed.initialBalance.total === "number"
+          ) {
+            setInitialBalance({
+              denominations: {
+                ...emptyDenominations,
+                ...(parsed.initialBalance.denominations || {}),
+              },
+              total: Number(parsed.initialBalance.total) || 0,
+            });
+          }
+          if (Array.isArray(parsed.expenses)) {
+            setExpenses(parsed.expenses);
+          }
+          if (parsed.cashReturns && Array.isArray(parsed.cashReturns.items)) {
+            setCashReturns({
+              items: parsed.cashReturns.items,
+              total:
+                Number(parsed.cashReturns.total) ||
+                parsed.cashReturns.items.reduce(
+                  (s: number, i: any) => s + Number(i.amount || 0),
+                  0
+                ),
+            });
+          }
+          if (parsed.cashDeposits && Array.isArray(parsed.cashDeposits.items)) {
+            setCashDeposits({
+              items: parsed.cashDeposits.items,
+              total:
+                Number(parsed.cashDeposits.total) ||
+                parsed.cashDeposits.items.reduce(
+                  (s: number, i: any) => s + Number(i.amount || 0),
+                  0
+                ),
+            });
+          }
+          if (typeof parsed.terminal === "number") setTerminal(parsed.terminal);
+          if (typeof parsed.terminalReturns === "number")
+            setTerminalReturns(parsed.terminalReturns);
+          if (parsed.transfers && Array.isArray(parsed.transfers.items)) {
+            const computedTotal =
+              Number(parsed.transfers.total) ||
+              parsed.transfers.items.reduce(
+                (s: number, i: any) => s + Number(i.amount || 0),
+                0
+              );
+            setTransfers({
+              items: parsed.transfers.items,
+              total: computedTotal,
+            });
+            setTerminalTransfer(computedTotal);
+          } else if (typeof parsed.terminalTransfer === "number") {
+            // Backward compatibility if no transfers stored previously
+            setTerminalTransfer(parsed.terminalTransfer);
+          }
+          if (
+            parsed.cashInRegister &&
+            typeof parsed.cashInRegister.total === "number"
+          ) {
+            setCashInRegister({
+              denominations: {
+                ...emptyDenominations,
+                ...(parsed.cashInRegister.denominations || {}),
+              },
+              total: Number(parsed.cashInRegister.total) || 0,
+            });
+          }
+          if (
+            parsed.cashWithdrawal &&
+            typeof parsed.cashWithdrawal.total === "number"
+          ) {
+            setCashWithdrawal({
+              denominations: {
+                ...emptyDenominations,
+                ...(parsed.cashWithdrawal.denominations || {}),
+              },
+              total: Number(parsed.cashWithdrawal.total) || 0,
+            });
+          }
+          if (typeof parsed.finalBalance === "number")
+            setFinalBalance(parsed.finalBalance);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading saved shift state:", error);
+    }
+    // Defer enabling saves until after state updates from storage commit
+    setTimeout(() => {
+      hasHydratedRef.current = true;
+    }, 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist shift state whenever it changes
+  useEffect(() => {
+    if (!hasHydratedRef.current) {
+      return;
+    }
+    try {
+      const payload = {
+        initialBalance,
+        expenses,
+        cashReturns,
+        cashDeposits,
+        terminal,
+        terminalReturns,
+        terminalTransfer,
+        transfers,
+        cashInRegister,
+        cashWithdrawal,
+        finalBalance,
+      };
+      if (typeof window !== "undefined") {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      }
+    } catch (error) {
+      console.error("Error saving shift state:", error);
+    }
+  }, [
+    initialBalance,
+    expenses,
+    cashReturns,
+    cashDeposits,
+    terminal,
+    terminalReturns,
+    terminalTransfer,
+    transfers,
+    cashInRegister,
+    cashWithdrawal,
+    finalBalance,
+  ]);
+
   // Get complete shift data for submission
   const getShiftData = (): ShiftData => {
     const data = {
@@ -214,6 +409,7 @@ export const ShiftProvider: React.FC<{ children: ReactNode }> = ({
       terminal,
       terminalReturns,
       terminalTransfer,
+      transfers,
       cashInRegister,
       expenses,
       cashReturns,
@@ -230,11 +426,14 @@ export const ShiftProvider: React.FC<{ children: ReactNode }> = ({
     return data;
   };
 
-  // Reset all state to default values
+  // Reset all state to default values, but keep final balance as new initial balance
   const resetShift = () => {
+    // Сохраняем текущий конечный остаток как начальный для новой смены
+    const currentFinalBalance = finalBalance;
+
     setInitialBalance({
       denominations: { ...emptyDenominations },
-      total: 0,
+      total: currentFinalBalance,
     });
     setExpenses([]);
     setCashReturns({
@@ -248,15 +447,23 @@ export const ShiftProvider: React.FC<{ children: ReactNode }> = ({
     setTerminal(0);
     setTerminalReturns(0);
     setTerminalTransfer(0);
+    setTransfers({ items: [], total: 0 });
     setCashInRegister({
       denominations: { ...emptyDenominations },
-      total: 0,
+      total: currentFinalBalance, // Устанавливаем наличные в кассе равными начальному остатку
     });
     setCashWithdrawal({
       denominations: { ...emptyDenominations },
       total: 0,
     });
-    setFinalBalance(0);
+    setFinalBalance(currentFinalBalance); // Конечный остаток остается тем же
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    } catch (error) {
+      console.error("Error clearing saved shift state:", error);
+    }
   };
 
   return (
@@ -269,12 +476,16 @@ export const ShiftProvider: React.FC<{ children: ReactNode }> = ({
         terminal,
         terminalReturns,
         terminalTransfer,
+        transfers,
         cashInRegister,
         cashWithdrawal,
         finalBalance,
         updateInitialBalance,
+        updateInitialBalanceTotal,
         addExpense,
         removeExpense,
+        addTransfer,
+        removeTransfer,
         addCashReturn,
         removeCashReturn,
         addCashDeposit,

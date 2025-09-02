@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Typography,
   Box,
   AppBar,
   Toolbar,
   CssBaseline,
+  Button,
   // Remove unused imports
   // Grid,
   // Paper,
@@ -17,6 +18,7 @@ import TerminalForm from "./components/TerminalForm";
 import CashWithdrawalForm from "./components/CashWithdrawalForm";
 import ShiftSummary from "./components/ShiftSummary";
 import DenominationModal from "./components/DenominationModal";
+import InitialBalanceForm from "./components/InitialBalanceForm";
 import CashReturnsForm from "./components/CashReturnsForm";
 import CashDepositsForm from "./components/CashDepositsForm";
 import SettingsModal from "./components/SettingsModal";
@@ -26,6 +28,8 @@ import { themeOverrides, CARD_DIMENSIONS, LAYOUT_DIMENSIONS } from "./styles";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import PaymentsIcon from "@mui/icons-material/Payments";
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
+import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 // Create theme
 const theme = createTheme({
@@ -63,6 +67,7 @@ const MainContent: React.FC = () => {
     cashInRegister,
     cashWithdrawal,
     updateInitialBalance,
+    updateInitialBalanceTotal,
     addExpense,
     removeExpense,
     addCashReturn,
@@ -72,12 +77,23 @@ const MainContent: React.FC = () => {
     updateTerminal,
     updateTerminalReturns,
     updateTerminalTransfer,
+    transfers,
+    addTransfer,
+    removeTransfer,
     updateCashInRegister,
     updateCashWithdrawal,
     calculateFinalBalance,
     getShiftData,
     resetShift,
   } = useShift();
+
+  // Двухшаговый режим: 1 — ввод данных, 2 — инкассация и закрытие смены
+  const [step, setStep] = useState<1 | 2>(1);
+
+  // Функция для сброса шага на первый
+  const handleResetStep = () => {
+    setStep(1);
+  };
 
   // Стиль для верхних карточек с уменьшенной высотой
   const topCardStyle = {
@@ -122,135 +138,206 @@ const MainContent: React.FC = () => {
             marginRight: LAYOUT_DIMENSIONS.marginLeft,
             marginBottom: "30px",
             display: "flex",
-            flexDirection: "row",
-            gap: LAYOUT_DIMENSIONS.gap,
+            flexDirection: "column",
+            gap: 2,
             minWidth: LAYOUT_DIMENSIONS.minWidth,
             maxWidth: "100%",
             boxSizing: "border-box",
           }}
         >
-          {/* Первая колонка: начальное сальдо и наличные в кассе */}
-          <Box
-            sx={{
-              width: LAYOUT_DIMENSIONS.columnWidths.first,
-              display: "flex",
-              flexDirection: "column",
-              gap: LAYOUT_DIMENSIONS.gap,
-            }}
-          >
-            <Box sx={topCardStyle}>
-              <DenominationModal
-                title="Начальное сальдо"
-                buttonText="Ввести"
-                initialDenominations={initialBalance.denominations}
-                onChange={updateInitialBalance}
-                total={initialBalance.total}
-                icon={<AccountBalanceWalletIcon />}
+          {/* Контейнер контента в зависимости от шага */}
+          {step === 1 ? (
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "row",
+                gap: LAYOUT_DIMENSIONS.gap,
+                boxSizing: "border-box",
+              }}
+            >
+              {/* Первая колонка: Начальный остаток и наличные в кассе */}
+              <Box
+                sx={{
+                  width: LAYOUT_DIMENSIONS.columnWidths.first,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: LAYOUT_DIMENSIONS.gap,
+                }}
+              >
+                <Box sx={topCardStyle}>
+                  <InitialBalanceForm
+                    amount={initialBalance.total}
+                    onUpdateAmount={updateInitialBalanceTotal}
+                  />
+                </Box>
+                <Box sx={bottomCardStyle}>
+                  <DenominationModal
+                    title="Наличные в кассе до инкассации"
+                    buttonText="Ввести"
+                    initialDenominations={cashInRegister.denominations}
+                    onChange={updateCashInRegister}
+                    total={cashInRegister.total}
+                    icon={<PaymentsIcon />}
+                    color="info"
+                    cardType="cashInRegister"
+                  />
+                </Box>
+              </Box>
+
+              {/* Вторая колонка: терминал и расходы */}
+              <Box
+                sx={{
+                  width: LAYOUT_DIMENSIONS.columnWidths.second,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: LAYOUT_DIMENSIONS.gap,
+                }}
+              >
+                <Box sx={topCardStyle}>
+                  <TerminalForm
+                    terminal={terminal}
+                    terminalReturns={terminalReturns}
+                    terminalTransfer={terminalTransfer}
+                    transfers={transfers}
+                    onUpdateTerminal={updateTerminal}
+                    onUpdateTerminalReturns={updateTerminalReturns}
+                    onUpdateTerminalTransfer={updateTerminalTransfer}
+                    onAddTransfer={addTransfer}
+                    onRemoveTransfer={removeTransfer}
+                  />
+                </Box>
+                <Box sx={bottomCardStyle}>
+                  <ExpenseForm
+                    expenses={expenses}
+                    onAdd={addExpense}
+                    onRemove={removeExpense}
+                  />
+                </Box>
+              </Box>
+
+              {/* Третья колонка: внесение наличных и возвраты наличными */}
+              <Box
+                sx={{
+                  width: LAYOUT_DIMENSIONS.columnWidths.third,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: LAYOUT_DIMENSIONS.gap,
+                }}
+              >
+                <Box sx={topCardStyle}>
+                  <CashDepositsForm
+                    cashDeposits={cashDeposits.items}
+                    totalDeposits={cashDeposits.total}
+                    onAdd={addCashDeposit}
+                    onRemove={removeCashDeposit}
+                  />
+                </Box>
+                <Box sx={bottomCardStyle}>
+                  <CashReturnsForm
+                    cashReturns={cashReturns.items}
+                    totalReturns={cashReturns.total}
+                    onAdd={addCashReturn}
+                    onRemove={removeCashReturn}
+                  />
+                </Box>
+              </Box>
+            </Box>
+          ) : (
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "row",
+                gap: LAYOUT_DIMENSIONS.gap,
+                boxSizing: "border-box",
+              }}
+            >
+              {/* Шаг 2: Инкассация и закрытие смены */}
+              <Box
+                sx={{
+                  width: LAYOUT_DIMENSIONS.columnWidths.fourth,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: LAYOUT_DIMENSIONS.gap,
+                }}
+              >
+                <Box sx={{ ...topCardStyle, height: "192px" }}>
+                  <CashWithdrawalForm
+                    cashWithdrawal={cashWithdrawal}
+                    onUpdateCashWithdrawal={updateCashWithdrawal}
+                  />
+                </Box>
+                <Box sx={{ ...bottomCardStyle, height: "448px" }}>
+                  <ShiftSummary
+                    initialBalance={initialBalance.total}
+                    expenses={expenses.reduce(
+                      (sum, exp) => sum + exp.amount,
+                      0
+                    )}
+                    expensesDetails={expenses.map((exp) => ({
+                      description: exp.name,
+                      amount: exp.amount,
+                    }))}
+                    transfersDetails={transfers.items.map((t) => ({
+                      description: t.name,
+                      amount: t.amount,
+                      timestamp: t.timestamp,
+                    }))}
+                    cashReturns={cashReturns.total}
+                    cashDeposits={cashDeposits.total}
+                    terminal={terminal}
+                    terminalReturns={terminalReturns}
+                    terminalTransfer={terminalTransfer}
+                    cashInRegister={cashInRegister.total}
+                    cashWithdrawal={cashWithdrawal.total}
+                    finalBalance={calculateFinalBalance()}
+                    onGetShiftData={getShiftData}
+                    onResetShift={resetShift}
+                    onResetStep={handleResetStep}
+                  />
+                </Box>
+              </Box>
+            </Box>
+          )}
+
+          {/* Навигация по шагам */}
+          {step === 1 ? (
+            <Box sx={{ width: "100%" }}>
+              <Button
+                onClick={() => setStep(2)}
+                variant="contained"
                 color="primary"
-                cardType="initialBalance"
-              />
+                startIcon={<AssignmentTurnedInIcon />}
+                fullWidth
+                sx={{
+                  mt: 1,
+                  py: 1.5,
+                  borderRadius: 2,
+                  fontWeight: "bold",
+                  boxShadow: 3,
+                }}
+              >
+                Перейти к инкассации
+              </Button>
             </Box>
-            <Box sx={bottomCardStyle}>
-              <DenominationModal
-                title="Наличные в кассе до инкассации"
-                buttonText="Ввести"
-                initialDenominations={cashInRegister.denominations}
-                onChange={updateCashInRegister}
-                total={cashInRegister.total}
-                icon={<PaymentsIcon />}
-                color="info"
-                cardType="cashInRegister"
-              />
+          ) : (
+            <Box sx={{ width: "100%" }}>
+              <Button
+                onClick={() => setStep(1)}
+                variant="outlined"
+                color="primary"
+                startIcon={<ArrowBackIcon />}
+                fullWidth
+                sx={{
+                  mt: 1,
+                  py: 1.25,
+                  borderRadius: 2,
+                  fontWeight: "bold",
+                }}
+              >
+                Назад
+              </Button>
             </Box>
-          </Box>
-
-          {/* Вторая колонка: терминал и расходы */}
-          <Box
-            sx={{
-              width: LAYOUT_DIMENSIONS.columnWidths.second,
-              display: "flex",
-              flexDirection: "column",
-              gap: LAYOUT_DIMENSIONS.gap,
-            }}
-          >
-            <Box sx={topCardStyle}>
-              <TerminalForm
-                terminal={terminal}
-                terminalReturns={terminalReturns}
-                terminalTransfer={terminalTransfer}
-                onUpdateTerminal={updateTerminal}
-                onUpdateTerminalReturns={updateTerminalReturns}
-                onUpdateTerminalTransfer={updateTerminalTransfer}
-              />
-            </Box>
-            <Box sx={bottomCardStyle}>
-              <ExpenseForm
-                expenses={expenses}
-                onAdd={addExpense}
-                onRemove={removeExpense}
-              />
-            </Box>
-          </Box>
-
-          {/* Третья колонка: внесение наличных и возвраты наличными */}
-          <Box
-            sx={{
-              width: LAYOUT_DIMENSIONS.columnWidths.third,
-              display: "flex",
-              flexDirection: "column",
-              gap: LAYOUT_DIMENSIONS.gap,
-            }}
-          >
-            <Box sx={topCardStyle}>
-              <CashDepositsForm
-                cashDeposits={cashDeposits.items}
-                totalDeposits={cashDeposits.total}
-                onAdd={addCashDeposit}
-                onRemove={removeCashDeposit}
-              />
-            </Box>
-            <Box sx={bottomCardStyle}>
-              <CashReturnsForm
-                cashReturns={cashReturns.items}
-                totalReturns={cashReturns.total}
-                onAdd={addCashReturn}
-                onRemove={removeCashReturn}
-              />
-            </Box>
-          </Box>
-
-          {/* Четвертая колонка: выемка из кассы и сводка */}
-          <Box
-            sx={{
-              width: LAYOUT_DIMENSIONS.columnWidths.fourth,
-              display: "flex",
-              flexDirection: "column",
-              gap: LAYOUT_DIMENSIONS.gap,
-            }}
-          >
-            <Box sx={topCardStyle}>
-              <CashWithdrawalForm
-                cashWithdrawal={cashWithdrawal}
-                onUpdateCashWithdrawal={updateCashWithdrawal}
-              />
-            </Box>
-            <Box sx={bottomCardStyle}>
-              <ShiftSummary
-                initialBalance={initialBalance.total}
-                expenses={expenses.reduce((sum, exp) => sum + exp.amount, 0)}
-                cashReturns={cashReturns.total}
-                cashDeposits={cashDeposits.total}
-                terminal={terminal}
-                terminalReturns={terminalReturns}
-                terminalTransfer={terminalTransfer}
-                cashInRegister={cashInRegister.total}
-                cashWithdrawal={cashWithdrawal.total}
-                finalBalance={calculateFinalBalance()}
-                onGetShiftData={getShiftData}
-                onResetShift={resetShift}
-              />
-            </Box>
-          </Box>
+          )}
         </Box>
       </Box>
     </Box>

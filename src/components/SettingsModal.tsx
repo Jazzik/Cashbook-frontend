@@ -62,7 +62,7 @@ const colorOptions = [
 
 // Card name translations for the UI
 const cardNameTranslations: Record<keyof CardColors, string> = {
-  initialBalance: "Начальное сальдо",
+  initialBalance: "Начальный остаток",
   cashReturns: "Возврат наличными",
   terminal: "Терминал",
   expenses: "Расходы",

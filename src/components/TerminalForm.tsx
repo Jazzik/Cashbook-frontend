@@ -29,9 +29,20 @@ interface TerminalFormProps {
   terminal: number;
   terminalReturns: number;
   terminalTransfer: number;
+  transfers?: {
+    items: Array<{
+      id: string;
+      name: string;
+      amount: number;
+      timestamp: string;
+    }>;
+    total: number;
+  };
   onUpdateTerminal: (value: number) => void;
   onUpdateTerminalReturns: (value: number) => void;
   onUpdateTerminalTransfer: (value: number) => void;
+  onAddTransfer?: (name: string, amount: number) => void;
+  onRemoveTransfer?: (id: string) => void;
 }
 
 const TerminalForm: React.FC<TerminalFormProps> = ({
@@ -41,6 +52,9 @@ const TerminalForm: React.FC<TerminalFormProps> = ({
   onUpdateTerminal,
   onUpdateTerminalReturns,
   onUpdateTerminalTransfer,
+  transfers,
+  onAddTransfer,
+  onRemoveTransfer,
 }) => {
   const [open, setOpen] = useState(false);
   const [terminalValue, setTerminalValue] = useState<string>(
@@ -52,6 +66,7 @@ const TerminalForm: React.FC<TerminalFormProps> = ({
   const [terminalTransferValue, setTerminalTransferValue] = useState<string>(
     terminalTransfer.toString()
   );
+  const [transferAmount, setTransferAmount] = useState<string>("");
   const { cardColors } = useSettings();
 
   const handleTerminalChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -138,8 +153,17 @@ const TerminalForm: React.FC<TerminalFormProps> = ({
   const handleSubmit = () => {
     onUpdateTerminal(parseFloat(terminalValue));
     onUpdateTerminalReturns(parseFloat(terminalReturnValue));
-    onUpdateTerminalTransfer(parseFloat(terminalTransferValue));
+    // Do not override transfers-driven total here
     handleClose();
+  };
+
+  const handleAddTransfer = () => {
+    const name = "Перевод";
+    const amount = parseFloat(transferAmount);
+    if (onAddTransfer && !isNaN(amount) && amount > 0) {
+      onAddTransfer(name, amount);
+      setTransferAmount("");
+    }
   };
 
   return (
@@ -310,7 +334,7 @@ const TerminalForm: React.FC<TerminalFormProps> = ({
                 whiteSpace: "nowrap",
               }}
             >
-              {formatCurrency(terminalTransfer)}
+              {formatCurrency(transfers ? transfers.total : terminalTransfer)}
             </Typography>
           </Box>
         </Box>
@@ -461,7 +485,7 @@ const TerminalForm: React.FC<TerminalFormProps> = ({
                 variant="subtitle1"
                 sx={{ mb: 1, fontWeight: "bold", color: "#424242" }}
               >
-                Возврат по терминалу
+                Возврат по терминалу (по сверке итогов):
               </Typography>
               <Box sx={{ display: "flex", alignItems: "center" }}>
                 <Button
@@ -528,62 +552,96 @@ const TerminalForm: React.FC<TerminalFormProps> = ({
               >
                 Переводы
               </Typography>
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <Button
-                  variant="outlined"
-                  style={{ borderColor: infoColor, color: infoColor }}
-                  onClick={decrementTerminalTransfer}
-                  sx={{
-                    mr: 1,
-                    minWidth: "40px",
-                    height: "56px",
-                    borderRadius: "8px 0 0 8px",
-                  }}
-                >
-                  <RemoveIcon />
-                </Button>
+              <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
                 <TextField
                   fullWidth
                   label="Сумма"
                   type="number"
-                  value={terminalTransferValue || ""}
-                  onChange={handleTerminalTransferChange}
+                  value={transferAmount}
+                  onChange={(e) => setTransferAmount(e.target.value)}
                   InputProps={{
-                    inputProps: {
-                      min: 0,
-                      style: {
-                        textAlign: "center",
-                        fontWeight: "bold",
-                        fontSize: "1.1rem",
-                      },
-                    },
                     endAdornment: (
                       <InputAdornment position="end">₽</InputAdornment>
                     ),
-                    sx: {
-                      "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button":
-                        {
-                          display: "none",
-                        },
-                    },
                   }}
                   variant="outlined"
-                  sx={{ borderRadius: 0, ...TEXT_FIELD_STYLES.modal }}
+                  sx={{ ...TEXT_FIELD_STYLES.modal }}
                 />
                 <Button
                   variant="outlined"
                   style={{ borderColor: infoColor, color: infoColor }}
-                  onClick={incrementTerminalTransfer}
+                  onClick={handleAddTransfer}
                   sx={{
-                    ml: 1,
-                    minWidth: "40px",
+                    minWidth: "120px",
                     height: "56px",
-                    borderRadius: "0 8px 8px 0",
+                    borderRadius: "8px",
+                    whiteSpace: "nowrap",
                   }}
                 >
-                  <AddIcon />
+                  Добавить
                 </Button>
               </Box>
+              {transfers && transfers.items.length > 0 && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ color: "#424242", mb: 1 }}
+                  >
+                    Список переводов
+                  </Typography>
+                  <Box sx={{ maxHeight: 200, overflowY: "auto" }}>
+                    {transfers.items.map((t) => (
+                      <Box
+                        key={t.id}
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          bgcolor: "rgba(0,0,0,0.05)",
+                          p: 1,
+                          mb: 1,
+                          borderRadius: 1,
+                        }}
+                      >
+                        <Box sx={{ display: "flex", flexDirection: "column" }}>
+                          <Typography
+                            variant="body2"
+                            sx={{ fontWeight: "bold" }}
+                          >
+                            {t.name}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {new Date(t.timestamp).toLocaleString()}
+                          </Typography>
+                        </Box>
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        >
+                          <Typography
+                            variant="body2"
+                            sx={{ fontWeight: "bold" }}
+                          >
+                            {formatCurrency(t.amount)}
+                          </Typography>
+                          {onRemoveTransfer && (
+                            <Button
+                              color="inherit"
+                              variant="text"
+                              onClick={() => onRemoveTransfer(t.id)}
+                              sx={{
+                                color: "#9e9e9e",
+                                "&:hover": { color: "#000" },
+                              }}
+                            >
+                              Удалить
+                            </Button>
+                          )}
+                        </Box>
+                      </Box>
+                    ))}
+                  </Box>
+                </Box>
+              )}
             </Box>
           </Box>
         </DialogContent>

@@ -291,15 +291,42 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
               {error}
             </Alert>
           )}
-          <Box sx={{ mb: 2 }}>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Описание"
+            fullWidth
+            variant="outlined"
+            value={expenseName}
+            onChange={(e) => setExpenseName(e.target.value)}
+            placeholder="Например: Закупка продуктов"
+            inputRef={nameInputRef}
+            sx={{ mb: 2, ...TEXT_FIELD_STYLES.modal }}
+          />
+          <Box
+            sx={{
+              mb: 2,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
             <Typography
               variant="subtitle2"
               color="text.secondary"
-              sx={{ mb: 1 }}
+              sx={{ mb: 1, textAlign: "center" }}
             >
               Шаблоны:
             </Typography>
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+            <Box
+              sx={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 1,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
               <Chip
                 label="Оплата логистики по накл. №"
                 onClick={handleTemplateClick}
@@ -316,18 +343,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
               />
             </Box>
           </Box>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Описание"
-            fullWidth
-            variant="outlined"
-            value={expenseName}
-            onChange={(e) => setExpenseName(e.target.value)}
-            placeholder="Например: Закупка продуктов"
-            inputRef={nameInputRef}
-            sx={{ mb: 2, ...TEXT_FIELD_STYLES.modal }}
-          />
           <TextField
             margin="dense"
             label="Сумма"

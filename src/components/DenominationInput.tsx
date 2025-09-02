@@ -142,6 +142,9 @@ const DenominationInput: React.FC<DenominationInputProps> = ({
     },
   ];
 
+  // Number of rows to fill the first column before wrapping to the second
+  const gridRows = Math.ceil(denominationItems.length / 2);
+
   return (
     <Paper elevation={3} sx={{ p: 2, mb: 2, borderRadius: "12px" }}>
       <Typography
@@ -157,9 +160,13 @@ const DenominationInput: React.FC<DenominationInputProps> = ({
           sx={{
             display: "grid",
             gridTemplateColumns: "repeat(2, 1fr)",
+            gridAutoFlow: "column",
+            gridTemplateRows: `repeat(${gridRows}, auto)` as any,
             gap: 2,
             "@media (max-width: 600px)": {
               gridTemplateColumns: "1fr",
+              gridAutoFlow: "row",
+              gridTemplateRows: "none",
             },
           }}
         >
