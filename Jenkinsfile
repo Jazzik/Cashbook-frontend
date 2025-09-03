@@ -57,7 +57,9 @@ pipeline {
             error 'Branch not configured for deployment'
           }
           // Write dynamic env vars to file and stash for later stages
+          echo "DEBUG: Writing envVars to file: ${envVars}"
           writeFile file: 'jenkins_env.groovy', text: envVars
+          echo "DEBUG: File written, content: ${readFile('jenkins_env.groovy')}"
           stash name: 'jenkins-env', includes: 'jenkins_env.groovy'
         }
       }
@@ -81,11 +83,9 @@ pipeline {
         branch 'test'
       }
       steps {
-        unstash 'jenkins-env'
         script {
-          // Load dynamic env vars
-          def envVars = readFile('jenkins_env.groovy')
-          evaluate(envVars)
+          // Use environment variables directly
+          echo "DEBUG: SHOPS = ${env.SHOPS}"
 
           // Create a dummy backend container for testing
           bat '''
@@ -95,7 +95,7 @@ pipeline {
           '''
 
           // The SHOPS variable is set in the Configure stage
-          def shopsList = SHOPS.split(',')
+          def shopsList = env.SHOPS.split(',')
 
           shopsList.each { shop ->
             def shopUpperCase = shop.toUpperCase()
@@ -112,8 +112,8 @@ pipeline {
               REM Run container with shop-specific parameters
               docker run --name ${shop}_frontend_container ^
                 --network cashbook-network ^
-                -d -p 127.0.0.1:${env."${shopUpperCase}_PORT"}:80 ^
-                -e BACKEND_URL=http://${shop}_backend_container:${env."${shopUpperCase}_BACKEND_PORT"}/api ^
+                -d -p 127.0.0.1:${env.TESTING_PORT}:80 ^
+                -e BACKEND_URL=http://${shop}_backend_container:${env.TESTING_BACKEND_PORT}/api ^
                 %DOCKER_REGISTRY%/%IMAGE_NAME%:%DOCKER_IMAGE_TAG%
             """
           }
@@ -122,14 +122,12 @@ pipeline {
           echo 'Waiting for containers to initialize...'
           bat 'timeout /t 10 /nobreak'
 
-          // No need to reread env vars since they're already in env
-          def envVars = readFile('jenkins_env.groovy')
-          evaluate(envVars)
-          def shopsList = SHOPS.split(',')
+          // Use environment variables directly
+          def shopsList = env.SHOPS.split(',')
           shopsList.each { shop ->
             def shopUpperCase = shop.toUpperCase()
 
-            echo "Checking health for ${shop} on port ${env."${shopUpperCase}_PORT"}"
+            echo "Checking health for ${shop} on port ${env.TESTING_PORT}"
             bat """
               REM Check if container is running
               docker ps -f name=${shop}_frontend_container --format "{{.Status}}"
