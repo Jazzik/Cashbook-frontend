@@ -30,9 +30,9 @@ pipeline {
             env.TESTING_BACKEND_PORT = '3999'
             echo "Configured for test environment: ${env.SHOPS}"
             envVars = """
-            SHOPS=${env.SHOPS}
-            TESTING_PORT=${env.TESTING_PORT}
-            TESTING_BACKEND_PORT=${env.TESTING_BACKEND_PORT}
+            SHOPS='${env.SHOPS}'
+            TESTING_PORT='${env.TESTING_PORT}'
+            TESTING_BACKEND_PORT='${env.TESTING_BACKEND_PORT}'
             """
           } else if (env.BRANCH_NAME == 'main') {
             env.SHOPS = 'makarov,yuz1'
@@ -44,11 +44,11 @@ pipeline {
             env.YUZ1_BACKEND_PORT = '5001'
             echo "Configured for production environments: ${env.SHOPS}"
             envVars = """
-            SHOPS=${env.SHOPS}
-            MAKAROV_PORT=${env.MAKAROV_PORT}
-            MAKAROV_BACKEND_PORT=${env.MAKAROV_BACKEND_PORT}
-            YUZ1_PORT=${env.YUZ1_PORT}
-            YUZ1_BACKEND_PORT=${env.YUZ1_BACKEND_PORT}
+            SHOPS='${env.SHOPS}'
+            MAKAROV_PORT='${env.MAKAROV_PORT}'
+            MAKAROV_BACKEND_PORT='${env.MAKAROV_BACKEND_PORT}'
+            YUZ1_PORT='${env.YUZ1_PORT}'
+            YUZ1_BACKEND_PORT='${env.YUZ1_BACKEND_PORT}'
             """
           } else {
             echo "Branch ${env.BRANCH_NAME} not configured for deployment"
