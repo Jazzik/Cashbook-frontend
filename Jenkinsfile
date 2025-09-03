@@ -75,80 +75,87 @@ pipeline {
       }
     }
 
-    // stage('Test container in test environment') {
-    //   agent { label 'build-node' }
-    //   when {
-    //     branch 'test'
-    //   }
-    //   steps {
-    //     unstash 'jenkins-env'
-    //     script {
-    //       // Create a dummy backend container for testing
-    //       bat '''
-    //         REM Create dummy backend container for testing
-    //         docker rm -f testing_backend_container || exit /b 0
-    //         docker run --name testing_backend_container --network cashbook-network -d nginx:alpine
-    //       '''
+    stage('Test container in test environment') {
+      agent { label 'build-node' }
+      when {
+        branch 'test'
+      }
+      steps {
+        unstash 'jenkins-env'
+        script {
+          // Load dynamic env vars
+          def envVars = readFile('jenkins_env.groovy')
+          evaluate(envVars)
 
-    //       // The env.SHOPS variable is set in the Configure stage
-    //       def shopsList = env.SHOPS.split(',')
+          // Create a dummy backend container for testing
+          bat '''
+            REM Create dummy backend container for testing
+            docker rm -f testing_backend_container || exit /b 0
+            docker run --name testing_backend_container --network cashbook-network -d nginx:alpine
+          '''
 
-    //       shopsList.each { shop ->
-    //         def shopUpperCase = shop.toUpperCase()
-    //         // These variables are set in the Configure stage
-    //         bat '''
-    //           REM Ensure Docker network exists
-    //           docker network inspect cashbook-network || docker network create cashbook-network
-    //         '''
-    //         bat """
-    //           REM Stop and remove if container exists
-    //           docker rm -f ${shop}_frontend_container || exit /b 0
-    //         """
-    //         bat """
-    //           REM Run container with shop-specific parameters
-    //           docker run --name ${shop}_frontend_container ^
-    //             --network cashbook-network ^
-    //             -d -p 127.0.0.1:${env."${shopUpperCase}_PORT"}:80 ^
-    //             -e BACKEND_URL=http://${shop}_backend_container:${env."${shopUpperCase}_BACKEND_PORT"}/api ^
-    //             $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG
-    //         """
-    //       }
-    //     }
-    //     script {
-    //       echo 'Waiting for containers to initialize...'
-    //       sleep 10
+          // The SHOPS variable is set in the Configure stage
+          def shopsList = SHOPS.split(',')
 
-    //       // No need to reread env vars since they're already in env
-    //       def shopsList = env.SHOPS.split(',')
-    //       shopsList.each { shop ->
-    //         def shopUpperCase = shop.toUpperCase()
+          shopsList.each { shop ->
+            def shopUpperCase = shop.toUpperCase()
+            // These variables are set in the Configure stage
+            bat '''
+              REM Ensure Docker network exists
+              docker network inspect cashbook-network || docker network create cashbook-network
+            '''
+            bat """
+              REM Stop and remove if container exists
+              docker rm -f ${shop}_frontend_container || exit /b 0
+            """
+            bat """
+              REM Run container with shop-specific parameters
+              docker run --name ${shop}_frontend_container ^
+                --network cashbook-network ^
+                -d -p 127.0.0.1:${env."${shopUpperCase}_PORT"}:80 ^
+                -e BACKEND_URL=http://${shop}_backend_container:${env."${shopUpperCase}_BACKEND_PORT"}/api ^
+                %DOCKER_REGISTRY%/%IMAGE_NAME%:%DOCKER_IMAGE_TAG%
+            """
+          }
+        }
+        script {
+          echo 'Waiting for containers to initialize...'
+          bat 'timeout /t 10 /nobreak'
 
-    //         echo "Checking health for ${shop} on port ${env."${shopUpperCase}_PORT"}"
-    //         bat """
-    //           REM Check if container is running
-    //           docker ps -f name=${shop}_frontend_container --format "{{.Status}}"
+          // No need to reread env vars since they're already in env
+          def envVars = readFile('jenkins_env.groovy')
+          evaluate(envVars)
+          def shopsList = SHOPS.split(',')
+          shopsList.each { shop ->
+            def shopUpperCase = shop.toUpperCase()
 
-    //           REM Create a mock health endpoint inside the container
-    //           docker exec ${shop}_frontend_container sh -c "mkdir -p /usr/share/nginx/html/internal-api && echo 'OK' > /usr/share/nginx/html/internal-api/health"
+            echo "Checking health for ${shop} on port ${env."${shopUpperCase}_PORT"}"
+            bat """
+              REM Check if container is running
+              docker ps -f name=${shop}_frontend_container --format "{{.Status}}"
 
-    //           REM Test the endpoint
-    //           docker exec ${shop}_frontend_container curl -f http://localhost/internal-api/health || (
-    //             echo "API Health Check Failed: Nginx routing failed for ${shop}" && exit 1
-    //           )
-    //         """
-    //         bat """
-    //           REM Stop and remove if container exists
-    //           docker rm -f ${shop}_frontend_container || exit /b 0
-    //         """
-    //       }
+              REM Create a mock health endpoint inside the container
+              docker exec ${shop}_frontend_container sh -c ^
+                "mkdir -p /usr/share/nginx/html/internal-api && echo 'OK' > /usr/share/nginx/html/internal-api/health"
 
-    //       bat '''
-    //         REM Clean up the dummy backend container
-    //         docker rm -f testing_backend_container || exit /b 0
-    //       '''
-    //     }
-    //   }
-    // }
+              REM Test the endpoint
+              docker exec ${shop}_frontend_container curl -f http://localhost/internal-api/health || (
+                echo "API Health Check Failed: Nginx routing failed for ${shop}" && exit 1
+              )
+            """
+            bat """
+              REM Stop and remove if container exists
+              docker rm -f ${shop}_frontend_container || exit /b 0
+            """
+          }
+
+          bat '''
+            REM Clean up the dummy backend container
+            docker rm -f testing_backend_container || exit /b 0
+          '''
+        }
+      }
+    }
     stage('Push to Docker Hub') {
       when {
         branch 'test'
@@ -156,51 +163,152 @@ pipeline {
       agent { label 'build-node' }
       steps {
         echo 'Pushing Docker image to Docker Hub'
-        bat """
-          docker login -u $DOCKER_REGISTRY -p $DOCKER_PASSWORD
-          docker push $DOCKER_REGISTRY/$IMAGE_NAME:$COMMIT_HASH
-          docker push $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG
-        """
+        bat '''
+          docker login -u %DOCKER_REGISTRY% -p %DOCKER_PASSWORD%
+          docker push %DOCKER_REGISTRY%/%IMAGE_NAME%:%COMMIT_HASH%
+          docker push %DOCKER_REGISTRY%/%IMAGE_NAME%:%DOCKER_IMAGE_TAG%
+        '''
+      }
+    }
+
+    stage('Deploy to Production') {
+      when {
+        branch 'test'
+      }
+      agent { label 'build-node' }
+      steps {
+        input message: 'Deploy Frontend to Production?', ok: 'Deploy', parameters: [
+          choice(name: 'DEPLOY_ACTION', choices: ['Deploy', 'Skip'], description: 'Choose deployment action')
+        ]
+        script {
+          if (params.DEPLOY_ACTION == 'Skip') {
+            echo 'Frontend production deployment skipped by user'
+            return
+          }
+
+          try {
+            echo 'Deploying tested frontend version to production'
+
+            // Pull the tested image
+            bat '''
+              REM Pull the image using the latest tag
+              docker pull %DOCKER_REGISTRY%/%IMAGE_NAME%:%DOCKER_IMAGE_TAG%
+            '''
+
+            // Set production environment variables
+            env.SHOPS = 'makarov,yuz1'
+            env.MAKAROV_PORT = '3000'
+            env.MAKAROV_BACKEND_PORT = '5000'
+            env.YUZ1_PORT = '3001'
+            env.YUZ1_BACKEND_PORT = '5001'
+
+            // Deploy to production
+            def shopsList = env.SHOPS.split(',')
+            shopsList.each { shop ->
+              def shopPort = env."${shop.toUpperCase()}_PORT"
+              def backendPort = env."${shop.toUpperCase()}_BACKEND_PORT"
+              echo "Deploying ${shop} to production on port ${shopPort}"
+
+              bat '''
+              REM Ensure Docker network exists
+              docker network inspect cashbook-network || docker network create cashbook-network
+              '''
+              bat """
+              REM Stop and remove if container exists
+              docker rm -f ${shop}_frontend_container || exit /b 0
+              """
+
+              bat """
+                docker run --name ${shop}_frontend_container ^
+                  --network cashbook-network ^
+                  -d -p 127.0.0.1:${shopPort}:80 ^
+                  -e BACKEND_URL=http://${shop}_backend_container:${backendPort}/api ^
+                  %DOCKER_REGISTRY%/%IMAGE_NAME%:%DOCKER_IMAGE_TAG%
+              """
+            }
+
+            echo 'Frontend production deployment completed successfully'
+          } catch (Exception e) {
+            echo "Error in frontend production deployment: ${e.getMessage()}"
+            currentBuild.result = 'FAILURE'
+            throw e
+          }
+        }
+      }
+    }
+
+    stage('Test Production Deployment') {
+      when {
+        branch 'test'
+      }
+      agent { label 'build-node' }
+      steps {
+        script {
+          try {
+            echo 'Testing production deployment'
+            bat 'timeout /t 10 /nobreak' // Give containers time to start
+
+            // Test production deployment
+            def shopsList = env.SHOPS.split(',')
+            shopsList.each { shop ->
+              def shopPort = env."${shop.toUpperCase()}_PORT"
+              echo "Testing production deployment for ${shop} on port ${shopPort}"
+
+              bat """
+                REM Test frontend container health
+                docker exec ${shop}_frontend_container curl -f http://localhost/internal-api/health || (
+                  echo "Production Health Check Failed for ${shop}" && exit 1
+                )
+              """
+              echo "Production Health Check Successful for ${shop}"
+            }
+
+            echo 'Production deployment test completed successfully'
+          } catch (Exception e) {
+            echo "Error in production deployment test: ${e.getMessage()}"
+            currentBuild.result = 'FAILURE'
+            throw e
+          }
+        }
       }
     }
 
     stage('Deploy Containers') {
-      agent { label 'deploy-node' }
+      agent { label 'build-node' }
       steps {
-        // unstash 'source-code'
-        // unstash 'jenkins-env'
+        unstash 'jenkins-env'
         script {
-          // // Load dynamic env vars
-          // def envVars = readFile('jenkins_env.groovy')
-          // evaluate(envVars)
+          // Load dynamic env vars
+          def envVars = readFile('jenkins_env.groovy')
+          evaluate(envVars)
 
           // Pull the image using the latest tag
-          sh """
-            # Pull the image using the latest tag
-            docker pull $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG
-            """
+          bat '''
+            REM Pull the image using the latest tag
+            docker pull %DOCKER_REGISTRY%/%IMAGE_NAME%:%DOCKER_IMAGE_TAG%
+            '''
           // Deploy containers
           def shopsList = SHOPS.split(',')
           shopsList.each { shop ->
-            def shopPort = this."${shop.toUpperCase()}_PORT"
-            def backendPort = this."${shop.toUpperCase()}_BACKEND_PORT"
+            def shopPort = env."${shop.toUpperCase()}_PORT"
+            def backendPort = env."${shop.toUpperCase()}_BACKEND_PORT"
             echo "Deploying ${shop} on port ${shopPort}"
 
-            sh '''
-            # Ensure Docker network exists
+            bat '''
+            REM Ensure Docker network exists
             docker network inspect cashbook-network || docker network create cashbook-network
             '''
-            sh """
-            # Stop and remove if container exists
+            bat """
+            REM Stop and remove if container exists
             docker rm -f ${shop}_frontend_container || exit /b 0
             """
 
-            sh """
-              docker run --name ${shop}_frontend_container \
-                --network cashbook-network \
-                -d -p 127.0.0.1:${shopPort}:80 \
-                -e BACKEND_URL=http://${shop}_backend_container:${backendPort}/api \
-                $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG
+            bat """
+              docker run --name ${shop}_frontend_container ^
+                --network cashbook-network ^
+                -d -p 127.0.0.1:${shopPort}:80 ^
+                -e BACKEND_URL=http://${shop}_backend_container:${backendPort}/api ^
+                %DOCKER_REGISTRY%/%IMAGE_NAME%:%DOCKER_IMAGE_TAG%
             """
           }
         }
@@ -208,28 +316,62 @@ pipeline {
     }
 
     stage('Test deployment containers') {
-      agent { label 'deploy-node' }
+      agent { label 'build-node' }
       steps {
-        sh 'sleep 10' // Give container a moment to start up
-        // unstash 'source-code'
-        // unstash 'jenkins-env'
+        bat 'timeout /t 10 /nobreak' // Give container a moment to start up
+        unstash 'jenkins-env'
         script {
           // Load dynamic env vars
-          // def envVars = readFile('jenkins_env.groovy')
-          // evaluate(envVars)
+          def envVars = readFile('jenkins_env.groovy')
+          evaluate(envVars)
           def shopList = SHOPS.split(',')
           shopList.each { shop ->
             // Execute curl from inside the frontend container to test the internal nginx routing
-            sh """
+            bat """
               docker exec ${shop}_frontend_container curl -f http://localhost/internal-api/health || (
                 echo "API Health Check Failed: Nginx routing to backend failed for ${shop}" && exit 1
               )
             """
-            echo "API Health Check Successful for ${shop}: Frontend container can connect to Backend through Nginx routing"
+            echo "API Health Check Successful for ${shop}: " ^
+              'Frontend container can connect to Backend through Nginx routing'
           }
         }
         echo 'Each tester has confirmed that update is OK'
       }
+    }
+  }
+
+  post {
+    always {
+      script {
+        // Cleanup any remaining containers
+        try {
+          def envVars = readFile('jenkins_env.groovy')
+          evaluate(envVars)
+          def shopsList = SHOPS.split(',')
+          shopsList.each { shop ->
+            bat """
+              REM Cleanup container for ${shop}
+              docker rm -f ${shop}_frontend_container || exit /b 0
+            """
+          }
+          // Cleanup dummy backend container
+          bat '''
+            REM Cleanup dummy backend container
+            docker rm -f testing_backend_container || exit /b 0
+          '''
+        } catch (Exception e) {
+          echo "Error during cleanup: ${e.getMessage()}"
+        }
+      }
+    }
+    failure {
+      echo 'Pipeline failed!'
+    // Add notification here if needed
+    }
+    success {
+      echo 'Pipeline succeeded!'
+    // Add notification here if needed
     }
   }
 }
