@@ -49,3 +49,6 @@ If you're having connection issues:
 2. Verify environment variables are set correctly
 3. Check browser console for proxy setup messages
 4. Ensure backend container is accessible from frontend container in Docker
+
+
+

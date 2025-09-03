@@ -33,7 +33,7 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf.template
 EXPOSE 80
 
 # Set default environment variable (will be overridden by Jenkins)
-ENV BACKEND_URL=http://localhost:5000/api
+ENV BACKEND_URL=http://localhost:5000
 
 # Create final configuration from template and start Nginx
 CMD ["sh", "-c", "envsubst '$BACKEND_URL' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"] 

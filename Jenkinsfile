@@ -106,13 +106,13 @@ pipeline {
               docker rm -f ${shop}_frontend_container || exit /b 0
             """
             bat """
-              REM Run container with shop-specific parameters
-              docker run --name ${shop}_frontend_container ^
-                --network cashbook-network ^
-                -d -p 127.0.0.1:${env.TESTING_PORT}:80 ^
-                -e BACKEND_URL=http://${shop}_backend_container:${env.TESTING_BACKEND_PORT}/api ^
-                %DOCKER_REGISTRY%/%IMAGE_NAME%:%DOCKER_IMAGE_TAG%
-            """
+                REM Run container with shop-specific parameters
+                docker run --name ${shop}_frontend_container ^
+                  --network cashbook-network ^
+                  -d -p 127.0.0.1:${env.TESTING_PORT}:80 ^
+                  -e BACKEND_URL=http://${shop}_backend_container:${env.TESTING_BACKEND_PORT} ^
+                  %DOCKER_REGISTRY%/%IMAGE_NAME%:%DOCKER_IMAGE_TAG%
+              """
           }
         }
         script {
@@ -213,7 +213,7 @@ pipeline {
                 docker run --name ${shop}_frontend_container ^
                   --network cashbook-network ^
                   -d -p 127.0.0.1:${shopPort}:80 ^
-                  -e BACKEND_URL=http://${shop}_backend_container:${backendPort}/api ^
+                  -e BACKEND_URL=http://${shop}_backend_container:${backendPort} ^
                   %DOCKER_REGISTRY%/%IMAGE_NAME%:%DOCKER_IMAGE_TAG%
               """
             }
@@ -300,12 +300,12 @@ pipeline {
             """
 
             bat """
-              docker run --name ${shop}_frontend_container ^
-                --network cashbook-network ^
-                -d -p 127.0.0.1:${shopPort}:80 ^
-                -e BACKEND_URL=http://${shop}_backend_container:${backendPort}/api ^
-                %DOCKER_REGISTRY%/%IMAGE_NAME%:%DOCKER_IMAGE_TAG%
-            """
+                docker run --name ${shop}_frontend_container ^
+                  --network cashbook-network ^
+                  -d -p 127.0.0.1:${shopPort}:80 ^
+                  -e BACKEND_URL=http://${shop}_backend_container:${backendPort} ^
+                  %DOCKER_REGISTRY%/%IMAGE_NAME%:%DOCKER_IMAGE_TAG%
+              """
           }
         }
       }
@@ -346,7 +346,7 @@ pipeline {
               docker rm -f testing_frontend_container || exit /b 0
               docker rm -f testing_backend_container || exit /b 0
             '''
-            echo "Cleanup completed"
+            echo 'Cleanup completed'
           } catch (Exception e) {
             echo "Error during cleanup: ${e.getMessage()}"
           }
