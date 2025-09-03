@@ -287,8 +287,8 @@ pipeline {
             REM Pull the image using the latest tag
             docker pull %DOCKER_REGISTRY%/%IMAGE_NAME%:%DOCKER_IMAGE_TAG%
             '''
-          // Deploy containers
-          def shopsList = SHOPS.split(',')
+                      // Deploy containers
+            def shopsList = env.SHOPS.split(',')
           shopsList.each { shop ->
             def shopPort = env."${shop.toUpperCase()}_PORT"
             def backendPort = env."${shop.toUpperCase()}_BACKEND_PORT"
