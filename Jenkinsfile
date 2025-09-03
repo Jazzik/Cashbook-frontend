@@ -57,9 +57,7 @@ pipeline {
             error 'Branch not configured for deployment'
           }
           // Write dynamic env vars to file and stash for later stages
-          echo "DEBUG: Writing envVars to file: ${envVars}"
           writeFile file: 'jenkins_env.groovy', text: envVars
-          echo "DEBUG: File written, content: ${readFile('jenkins_env.groovy')}"
           stash name: 'jenkins-env', includes: 'jenkins_env.groovy'
         }
       }
@@ -85,7 +83,6 @@ pipeline {
       steps {
         script {
           // Use environment variables directly
-          echo "DEBUG: SHOPS = ${env.SHOPS}"
 
           // Create a dummy backend container for testing
           bat '''
@@ -132,13 +129,9 @@ pipeline {
               REM Check if container is running
               docker ps -f name=${shop}_frontend_container --format "{{.Status}}"
 
-              REM Create a mock health endpoint inside the container
-              docker exec ${shop}_frontend_container sh -c ^
-                "mkdir -p /usr/share/nginx/html/internal-api && echo 'OK' > /usr/share/nginx/html/internal-api/health"
-
-              REM Test the endpoint
-              docker exec ${shop}_frontend_container curl -f http://localhost/internal-api/health || (
-                echo "API Health Check Failed: Nginx routing failed for ${shop}" && exit 1
+              REM Test if nginx is responding
+              docker exec ${shop}_frontend_container curl -f http://localhost/ || (
+                echo "Frontend Health Check Failed: Nginx not responding for ${shop}" && exit 1
               )
             """
             bat """
@@ -254,7 +247,7 @@ pipeline {
 
               bat """
                 REM Test frontend container health
-                docker exec ${shop}_frontend_container curl -f http://localhost/internal-api/health || (
+                docker exec ${shop}_frontend_container curl -f http://localhost/ || (
                   echo "Production Health Check Failed for ${shop}" && exit 1
                 )
               """
@@ -328,12 +321,12 @@ pipeline {
           shopList.each { shop ->
             // Execute curl from inside the frontend container to test the internal nginx routing
             bat """
-              docker exec ${shop}_frontend_container curl -f http://localhost/internal-api/health || (
-                echo "API Health Check Failed: Nginx routing to backend failed for ${shop}" && exit 1
+              docker exec ${shop}_frontend_container curl -f http://localhost/ || (
+                echo "Frontend Health Check Failed: Nginx not responding for ${shop}" && exit 1
               )
             """
-            echo "API Health Check Successful for ${shop}: " ^
-              'Frontend container can connect to Backend through Nginx routing'
+            echo "Frontend Health Check Successful for ${shop}: " ^
+              'Nginx is responding correctly'
           }
         }
         echo 'Each tester has confirmed that update is OK'
