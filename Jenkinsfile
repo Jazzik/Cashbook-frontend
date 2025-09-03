@@ -120,7 +120,7 @@ pipeline {
         }
         script {
           echo 'Waiting for containers to initialize...'
-          bat 'timeout /t 10 /nobreak'
+          bat 'ping 127.0.0.1 -n 11 > nul'
 
           // Use environment variables directly
           def shopsList = env.SHOPS.split(',')
@@ -244,7 +244,7 @@ pipeline {
         script {
           try {
             echo 'Testing production deployment'
-            bat 'timeout /t 10 /nobreak' // Give containers time to start
+            bat 'ping 127.0.0.1 -n 11 > nul' // Give containers time to start
 
             // Test production deployment
             def shopsList = env.SHOPS.split(',')
@@ -273,20 +273,25 @@ pipeline {
 
     stage('Deploy Containers') {
       agent { label 'build-node' }
+      when {
+        branch 'main'
+      }
       steps {
-        unstash 'jenkins-env'
         script {
-          // Load dynamic env vars
-          def envVars = readFile('jenkins_env.groovy')
-          evaluate(envVars)
+          // Set production environment variables
+          env.SHOPS = 'makarov,yuz1'
+          env.MAKAROV_PORT = '3000'
+          env.MAKAROV_BACKEND_PORT = '5000'
+          env.YUZ1_PORT = '3001'
+          env.YUZ1_BACKEND_PORT = '5001'
 
           // Pull the image using the latest tag
           bat '''
             REM Pull the image using the latest tag
             docker pull %DOCKER_REGISTRY%/%IMAGE_NAME%:%DOCKER_IMAGE_TAG%
             '''
-                      // Deploy containers
-            def shopsList = env.SHOPS.split(',')
+          // Deploy containers
+          def shopsList = env.SHOPS.split(',')
           shopsList.each { shop ->
             def shopPort = env."${shop.toUpperCase()}_PORT"
             def backendPort = env."${shop.toUpperCase()}_BACKEND_PORT"
@@ -316,13 +321,10 @@ pipeline {
     stage('Test deployment containers') {
       agent { label 'build-node' }
       steps {
-        bat 'timeout /t 10 /nobreak' // Give container a moment to start up
-        unstash 'jenkins-env'
+        bat 'ping 127.0.0.1 -n 11 > nul' // Give container a moment to start up
         script {
-          // Load dynamic env vars
-          def envVars = readFile('jenkins_env.groovy')
-          evaluate(envVars)
-          def shopList = SHOPS.split(',')
+          // Use environment variables directly
+          def shopList = env.SHOPS.split(',')
           shopList.each { shop ->
             // Execute curl from inside the frontend container to test the internal nginx routing
             bat """
@@ -341,25 +343,20 @@ pipeline {
 
   post {
     always {
-      script {
-        // Cleanup any remaining containers
-        try {
-          def envVars = readFile('jenkins_env.groovy')
-          evaluate(envVars)
-          def shopsList = SHOPS.split(',')
-          shopsList.each { shop ->
-            bat """
-              REM Cleanup container for ${shop}
-              docker rm -f ${shop}_frontend_container || exit /b 0
-            """
+      node('build-node') {
+        script {
+          // Cleanup any remaining containers
+          try {
+            // Cleanup test containers
+            bat '''
+              REM Cleanup test containers
+              docker rm -f testing_frontend_container || exit /b 0
+              docker rm -f testing_backend_container || exit /b 0
+            '''
+            echo "Cleanup completed"
+          } catch (Exception e) {
+            echo "Error during cleanup: ${e.getMessage()}"
           }
-          // Cleanup dummy backend container
-          bat '''
-            REM Cleanup dummy backend container
-            docker rm -f testing_backend_container || exit /b 0
-          '''
-        } catch (Exception e) {
-          echo "Error during cleanup: ${e.getMessage()}"
         }
       }
     }
