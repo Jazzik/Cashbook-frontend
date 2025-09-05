@@ -289,6 +289,7 @@ pipeline {
               bat """
                 docker run --name ${shop}_frontend_container ^
                   --network cashbook-network ^
+                  --restart unless-stopped ^
                   -d -p 127.0.0.1:${shopPort}:80 ^
                   -e BACKEND_URL=http://${shop}_backend_container:${backendPort} ^
                   %DOCKER_REGISTRY%/%IMAGE_NAME%:%DOCKER_IMAGE_TAG%
@@ -339,6 +340,7 @@ pipeline {
               bat """
                 docker run --name ${shop}_frontend_container ^
                   --network cashbook-network ^
+                  --restart unless-stopped ^
                   -d -p 127.0.0.1:${shopPort}:80 ^
                   -e BACKEND_URL=http://${shop}_backend_container:${backendPort} ^
                   %DOCKER_REGISTRY%/%IMAGE_NAME%:%DOCKER_IMAGE_TAG%
