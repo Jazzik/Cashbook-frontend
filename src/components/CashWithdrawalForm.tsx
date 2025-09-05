@@ -272,6 +272,7 @@ const CashWithdrawalForm: React.FC<CashWithdrawalFormProps> = ({
             title="Выемка из кассы"
             initialDenominations={denominations}
             onChange={handleDenominationsChange}
+            availableDenominations={cashInRegister.denominations}
           />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
