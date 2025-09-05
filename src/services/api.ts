@@ -15,14 +15,35 @@ const apiClient = axios.create({
 // API functions
 export const api = {
     // Submit shift data to the server
-    submitShiftData: async (shiftData: ShiftData) => {
+    submitShiftData: async (shiftData: ShiftData, screenshot?: File) => {
         try {
             console.log('Sending shift data to server:', {
                 terminal: shiftData.terminal,
                 terminalReturns: shiftData.terminalReturns,
                 terminalTransfer: shiftData.terminalTransfer
             });
-            const response = await apiClient.post('/shift-data', shiftData);
+
+            let response;
+
+            if (screenshot) {
+                // Create FormData for file upload
+                const formData = new FormData();
+                formData.append('screenshot', screenshot);
+
+                // Add shift data as JSON string
+                formData.append('shiftData', JSON.stringify(shiftData));
+
+                // Send with multipart/form-data
+                response = await apiClient.post('/shift-data', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                });
+            } else {
+                // Send as JSON (existing behavior)
+                response = await apiClient.post('/shift-data', shiftData);
+            }
+
             console.log('Server response:', response.data);
             return response.data;
         } catch (error) {

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   Typography,
   Paper,
@@ -32,6 +32,7 @@ import { api } from "../services/api";
 import { useSettings } from "../context/SettingsContext";
 import CreditCardIcon from "@mui/icons-material/CreditCard";
 import PaidIcon from "@mui/icons-material/Paid";
+import html2canvas from "html2canvas";
 
 interface ShiftSummaryProps {
   initialBalance: number;
@@ -85,6 +86,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
   const [isErrorToastOpen, setIsErrorToastOpen] = useState(false);
 
   const { cardColors } = useSettings();
+  const reportRef = useRef<HTMLDivElement>(null);
 
   const getMainColor = () => {
     return cardColors.shiftSummary;
@@ -140,7 +142,19 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
           submitData.terminalReturns +
           submitData.terminalTransfer,
       });
-      await api.submitShiftData(submitData);
+
+      // Capture screenshot of the report
+      console.log("Capturing screenshot before submission...");
+      const screenshot = await captureReportScreenshot();
+      
+      if (screenshot) {
+        console.log("Screenshot captured, sending with data");
+      } else {
+        console.log("Screenshot capture failed, sending data without screenshot");
+      }
+
+      // Submit data with screenshot
+      await api.submitShiftData(submitData, screenshot || undefined);
       setOpen(false);
       onResetShift(); // Сбрасываем данные смены
       onResetStep(); // Возвращаемся на первую страницу
@@ -157,6 +171,39 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
 
   const handleErrorToastClose = () => {
     setIsErrorToastOpen(false);
+  };
+
+  // Function to capture screenshot of the report
+  const captureReportScreenshot = async (): Promise<File | null> => {
+    if (!reportRef.current) {
+      console.error('Report element not found');
+      return null;
+    }
+
+    try {
+      console.log('Capturing screenshot of report...');
+      
+      const canvas = await html2canvas(reportRef.current);
+
+      // Convert canvas to blob
+      return new Promise((resolve) => {
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = `shift-report-${timestamp}.png`;
+            const file = new File([blob], filename, { type: 'image/png' });
+            console.log('Screenshot captured successfully:', filename);
+            resolve(file);
+          } else {
+            console.error('Failed to create blob from canvas');
+            resolve(null);
+          }
+        }, 'image/png', 0.9);
+      });
+    } catch (error) {
+      console.error('Error capturing screenshot:', error);
+      return null;
+    }
   };
 
   // Расчет выручки по правилам экономики:
@@ -327,7 +374,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
           sx={{ p: { xs: 2, sm: 3, md: 4 }, mt: { xs: 0, sm: 1 } }}
         >
           <Box sx={{ maxWidth: "1600px", mx: "auto" }}>
-            <Card variant="outlined" sx={{ mb: 3 }}>
+            <Card ref={reportRef} variant="outlined" sx={{ mb: 3 }}>
               <CardContent sx={{ p: { xs: 2, md: 4 } }}>
                 {/* Текущая дата и время */}
                 <Box

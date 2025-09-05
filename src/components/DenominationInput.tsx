@@ -19,6 +19,7 @@ interface DenominationInputProps {
   initialDenominations?: Denominations;
   onChange: (denominations: Denominations, total: number) => void;
   readOnly?: boolean;
+  availableDenominations?: Denominations; // Доступные купюры в кассе
 }
 
 const DenominationInput: React.FC<DenominationInputProps> = ({
@@ -26,6 +27,7 @@ const DenominationInput: React.FC<DenominationInputProps> = ({
   initialDenominations = emptyDenominations,
   onChange,
   readOnly = false,
+  availableDenominations,
 }) => {
   const [denominations, setDenominations] =
     useState<Denominations>(initialDenominations);
@@ -43,6 +45,14 @@ const DenominationInput: React.FC<DenominationInputProps> = ({
   // Increment and decrement functions
   const incrementValue = (name: string) => {
     const currentValue = denominations[name as keyof Denominations] as number;
+    const availableValue =
+      availableDenominations?.[name as keyof Denominations] || 0;
+
+    // Проверяем, не превышает ли новое значение доступное количество
+    if (availableDenominations && currentValue >= availableValue) {
+      return; // Не увеличиваем, если достигли лимита
+    }
+
     updateDenomination(name, currentValue + 1);
   };
 
@@ -55,6 +65,16 @@ const DenominationInput: React.FC<DenominationInputProps> = ({
 
   // Common function to update denomination
   const updateDenomination = (name: string, value: number) => {
+    // Проверяем лимиты, если доступные купюры заданы
+    if (availableDenominations) {
+      const availableValue =
+        availableDenominations[name as keyof Denominations] || 0;
+      value = Math.min(value, availableValue); // Не позволяем превысить доступное количество
+    }
+
+    // Не позволяем отрицательные значения
+    value = Math.max(0, value);
+
     const updatedDenominations = {
       ...denominations,
       [name]: value,
@@ -78,7 +98,7 @@ const DenominationInput: React.FC<DenominationInputProps> = ({
       name: "note5000",
       label: "5000 ₽",
       value: denominations.note5000,
-      color: "#4CAF50",
+      color: "#EC7C04FF",
     },
     {
       name: "note2000",
@@ -90,43 +110,43 @@ const DenominationInput: React.FC<DenominationInputProps> = ({
       name: "note1000",
       label: "1000 ₽",
       value: denominations.note1000,
-      color: "#9C27B0",
+      color: "#7EB6CCFF",
     },
     {
       name: "note500",
       label: "500 ₽",
       value: denominations.note500,
-      color: "#FF9800",
+      color: "#F24C4CFF",
     },
     {
       name: "note200",
       label: "200 ₽",
       value: denominations.note200,
-      color: "#795548",
+      color: "#4B9F42FF",
     },
     {
       name: "note100",
       label: "100 ₽",
       value: denominations.note100,
-      color: "#E91E63",
+      color: "#D5AB41FF",
     },
     {
       name: "note50",
       label: "50 ₽",
       value: denominations.note50,
-      color: "#607D8B",
+      color: "#85A8BAFF",
     },
     {
       name: "coin10",
       label: "10 ₽",
       value: denominations.coin10,
-      color: "#FF5722",
+      color: "#7DCC96FF",
     },
     {
       name: "coin5",
       label: "5 ₽",
       value: denominations.coin5,
-      color: "#673AB7",
+      color: "#7F7D82FF",
     },
     {
       name: "coin2",
@@ -170,97 +190,121 @@ const DenominationInput: React.FC<DenominationInputProps> = ({
             },
           }}
         >
-          {denominationItems.map((item) => (
-            <Box
-              key={item.name}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                transition: "all 0.3s ease",
-                "&:hover": {
-                  transform: "translateY(-2px)",
-                },
-              }}
-            >
-              <Chip
-                label={item.label}
+          {denominationItems.map((item) => {
+            const availableValue =
+              availableDenominations?.[item.name as keyof Denominations] || 0;
+            const isAtLimit =
+              availableDenominations && item.value >= availableValue;
+
+            return (
+              <Box
+                key={item.name}
                 sx={{
-                  fontWeight: "bold",
-                  backgroundColor: item.color,
-                  color: "white",
-                  fontSize: "0.85rem",
-                  height: "24px",
-                  minWidth: "80px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    transform: "translateY(-2px)",
+                  },
                 }}
-              />
-              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                <ButtonGroup size="small" variant="outlined">
-                  <Button
-                    onClick={() => decrementValue(item.name)}
-                    disabled={
-                      readOnly ||
-                      denominations[item.name as keyof Denominations] === 0
-                    }
-                    sx={{
-                      minWidth: "32px",
-                      height: "32px",
-                      fontSize: "1rem",
-                      borderColor: item.color,
-                      color: item.color,
-                      "&:hover": {
-                        borderColor: item.color,
-                        backgroundColor: `${item.color}10`,
-                      },
-                    }}
-                  >
-                    <RemoveIcon fontSize="small" />
-                  </Button>
-                  <Button
-                    onClick={() => incrementValue(item.name)}
-                    disabled={readOnly}
-                    sx={{
-                      minWidth: "32px",
-                      height: "32px",
-                      fontSize: "1rem",
-                      borderColor: item.color,
-                      color: item.color,
-                      "&:hover": {
-                        borderColor: item.color,
-                        backgroundColor: `${item.color}10`,
-                      },
-                    }}
-                  >
-                    <AddIcon fontSize="small" />
-                  </Button>
-                </ButtonGroup>
-                <TextField
-                  name={item.name}
-                  type="number"
-                  value={item.value}
-                  onChange={handleChange}
-                  InputProps={{
-                    readOnly: readOnly,
-                    inputProps: {
-                      min: 0,
-                    },
-                    sx: {
-                      "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button":
-                        {
-                          display: "none",
-                        },
-                    },
-                  }}
-                  variant="outlined"
-                  size="small"
+              >
+                <Chip
+                  label={item.label}
                   sx={{
-                    width: "80px",
-                    ...TEXT_FIELD_STYLES.denomination,
+                    fontWeight: "bold",
+                    backgroundColor: item.color,
+                    color: "white",
+                    fontSize: "1.2rem",
+                    height: "40px",
+                    minWidth: "100px",
                   }}
                 />
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  <ButtonGroup size="small" variant="outlined">
+                    <Button
+                      onClick={() => decrementValue(item.name)}
+                      disabled={
+                        readOnly ||
+                        denominations[item.name as keyof Denominations] === 0
+                      }
+                      sx={{
+                        minWidth: "32px",
+                        height: "32px",
+                        fontSize: "1rem",
+                        borderColor: item.color,
+                        color: item.color,
+                        "&:hover": {
+                          borderColor: item.color,
+                          backgroundColor: `${item.color}10`,
+                        },
+                      }}
+                    >
+                      <RemoveIcon fontSize="small" />
+                    </Button>
+                    <Button
+                      onClick={() => incrementValue(item.name)}
+                      disabled={readOnly || isAtLimit}
+                      sx={{
+                        minWidth: "32px",
+                        height: "32px",
+                        fontSize: "1rem",
+                        borderColor: item.color,
+                        color: item.color,
+                        "&:hover": {
+                          borderColor: item.color,
+                          backgroundColor: `${item.color}10`,
+                        },
+                      }}
+                    >
+                      <AddIcon fontSize="small" />
+                    </Button>
+                  </ButtonGroup>
+                  <TextField
+                    name={item.name}
+                    type="number"
+                    value={item.value}
+                    onChange={handleChange}
+                    InputProps={{
+                      readOnly: readOnly,
+                      inputProps: {
+                        min: 0,
+                        max: availableDenominations
+                          ? availableValue
+                          : undefined,
+                      },
+                      sx: {
+                        "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button":
+                          {
+                            display: "none",
+                          },
+                      },
+                    }}
+                    variant="outlined"
+                    size="small"
+                    sx={{
+                      width: "80px",
+                      ...TEXT_FIELD_STYLES.denomination,
+                    }}
+                  />
+                  {availableDenominations && (
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        color: "text.secondary",
+                        fontSize: "0.9rem",
+                        fontWeight: "bold",
+                        minWidth: "50px",
+                        textAlign: "center",
+                      }}
+                    >
+                      /{availableValue}
+                    </Typography>
+                  )}
+                </Box>
               </Box>
-            </Box>
-          ))}
+            );
+          })}
         </Box>
       </Box>
 
