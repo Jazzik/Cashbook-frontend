@@ -265,11 +265,13 @@ pipeline {
             '''
 
             // Set production environment variables
-            env.SHOPS = 'makarov,yuz1'
+            env.SHOPS = 'makarov,makarov2,yuz1'
             env.MAKAROV_PORT = '3000'
             env.MAKAROV_BACKEND_PORT = '5000'
-            env.YUZ1_PORT = '3001'
-            env.YUZ1_BACKEND_PORT = '5001'
+            env.MAKAROV2_PORT = '3001'
+            env.MAKAROV2_BACKEND_PORT = '5001'
+            env.YUZ1_PORT = '3002'
+            env.YUZ1_BACKEND_PORT = '5002'
 
             // Deploy to production
             def shopsList = env.SHOPS.split(',')
