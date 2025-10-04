@@ -94,6 +94,8 @@ pipeline {
               envVars += """
                 MAKAROV_PORT='${env.MAKAROV_PORT}'
                 MAKAROV_BACKEND_PORT='${env.MAKAROV_BACKEND_PORT}'
+                MAKAROV2_PORT='${env.MAKAROV2_PORT}'
+                MAKAROV2_BACKEND_PORT='${env.MAKAROV2_BACKEND_PORT}'
                 YUZ1_PORT='${env.YUZ1_PORT}'
                 YUZ1_BACKEND_PORT='${env.YUZ1_BACKEND_PORT}'
               """
