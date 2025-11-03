@@ -48,6 +48,7 @@ interface ShiftSummaryProps {
   onGetShiftData: () => ShiftData;
   onResetShift: () => void;
   onResetStep: () => void;
+  onShiftClosed: () => void;
   expensesDetails?: Array<{ description: string; amount: number }>;
   cashDepositsDetails?: Array<{ description: string; amount: number }>;
   cashReturnsDetails?: Array<{ description: string; amount: number }>;
@@ -73,6 +74,7 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
   onGetShiftData,
   onResetShift,
   onResetStep,
+  onShiftClosed,
   expensesDetails = [],
   cashDepositsDetails = [],
   cashReturnsDetails = [],
@@ -146,18 +148,27 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
       // Capture screenshot of the report
       console.log("Capturing screenshot before submission...");
       const screenshot = await captureReportScreenshot();
-      
+
       if (screenshot) {
         console.log("Screenshot captured, sending with data");
       } else {
-        console.log("Screenshot capture failed, sending data without screenshot");
+        console.log(
+          "Screenshot capture failed, sending data without screenshot"
+        );
       }
 
-      // Submit data with screenshot
-      await api.submitShiftData(submitData, screenshot || undefined);
-      setOpen(false);
-      onResetShift(); // Сбрасываем данные смены
-      onResetStep(); // Возвращаемся на первую страницу
+      // Submit data with screenshot (up to 2 attempts)
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          await api.submitShiftData(submitData, screenshot || undefined);
+          setOpen(false);
+          onShiftClosed();
+          break;
+        } catch (err) {
+          console.error(`submitShiftData attempt ${attempt} failed`, err);
+          if (attempt === 2) throw err;
+        }
+      }
     } catch (error) {
       console.error("Error submitting shift data:", error);
       setSubmitError(
@@ -176,32 +187,63 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
   // Function to capture screenshot of the report
   const captureReportScreenshot = async (): Promise<File | null> => {
     if (!reportRef.current) {
-      console.error('Report element not found');
+      console.error("Report element not found");
       return null;
     }
 
     try {
-      console.log('Capturing screenshot of report...');
-      
-      const canvas = await html2canvas(reportRef.current);
+      console.log("Capturing screenshot of report...");
+      // Render the report area
+      const renderedCanvas = await html2canvas(reportRef.current);
 
-      // Convert canvas to blob
+      // Export with fixed width and dynamic height based on content
+      const TARGET_WIDTH = 1800;
+      const scale = TARGET_WIDTH / renderedCanvas.width;
+      const TARGET_HEIGHT = Math.max(
+        1,
+        Math.round(renderedCanvas.height * scale)
+      );
+
+      // Create an output canvas and draw the rendered canvas scaled to the target size
+      const outputCanvas = document.createElement("canvas");
+      outputCanvas.width = TARGET_WIDTH;
+      outputCanvas.height = TARGET_HEIGHT;
+      const ctx = outputCanvas.getContext("2d");
+      if (!ctx) {
+        console.error("Cannot get 2D context for output canvas");
+        return null;
+      }
+
+      // Fill white background
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, TARGET_WIDTH, TARGET_HEIGHT);
+
+      // Scale to target width, keep aspect ratio for height
+      const drawWidth = TARGET_WIDTH;
+      const drawHeight = TARGET_HEIGHT;
+      const dx = 0;
+      const dy = 0;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(renderedCanvas, dx, dy, drawWidth, drawHeight);
+
+      // Convert final canvas to blob
       return new Promise((resolve) => {
-        canvas.toBlob((blob) => {
+        outputCanvas.toBlob((blob) => {
           if (blob) {
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
             const filename = `shift-report-${timestamp}.png`;
-            const file = new File([blob], filename, { type: 'image/png' });
-            console.log('Screenshot captured successfully:', filename);
+            const file = new File([blob], filename, { type: "image/png" });
+            console.log("Screenshot captured successfully:", filename);
             resolve(file);
           } else {
-            console.error('Failed to create blob from canvas');
+            console.error("Failed to create blob from canvas");
             resolve(null);
           }
-        }, 'image/png', 0.9);
+        }, "image/png");
       });
     } catch (error) {
-      console.error('Error capturing screenshot:', error);
+      console.error("Error capturing screenshot:", error);
       return null;
     }
   };

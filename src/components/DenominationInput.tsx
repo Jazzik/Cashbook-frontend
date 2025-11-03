@@ -34,12 +34,84 @@ const DenominationInput: React.FC<DenominationInputProps> = ({
   const [total, setTotal] = useState<number>(
     calculateTotal(initialDenominations)
   );
+  // Храним строковые значения для полей ввода, чтобы корректно работать с пустой строкой
+  const [inputValues, setInputValues] = useState<Record<string, string>>({
+    note5000: String(initialDenominations.note5000 ?? 0),
+    note2000: String(initialDenominations.note2000 ?? 0),
+    note1000: String(initialDenominations.note1000 ?? 0),
+    note500: String(initialDenominations.note500 ?? 0),
+    note200: String(initialDenominations.note200 ?? 0),
+    note100: String(initialDenominations.note100 ?? 0),
+    note50: String(initialDenominations.note50 ?? 0),
+    coin10: String(initialDenominations.coin10 ?? 0),
+    coin5: String(initialDenominations.coin5 ?? 0),
+    coin2: String(initialDenominations.coin2 ?? 0),
+    coin1: String(initialDenominations.coin1 ?? 0),
+  });
 
   // Handle input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    const numberValue = parseInt(value) || 0;
+    const { name } = e.target;
+    let { value } = e.target;
+
+    // Разрешаем только цифры
+    value = value.replace(/\D+/g, "");
+
+    // Убираем лидирующие нули (кроме единственного нуля)
+    if (value.length > 1) {
+      value = value.replace(/^0+/, "");
+    }
+
+    // Обновляем отображаемое значение сразу
+    setInputValues((prev) => ({ ...prev, [name]: value }));
+
+    // Пустая строка не обновляет счётчик, ждём blur или следующего ввода
+    if (value === "") return;
+
+    let numberValue = parseInt(value, 10) || 0;
+
+    // Применяем лимиты, если заданы доступные купюры
+    if (availableDenominations) {
+      const availableValue =
+        availableDenominations[name as keyof Denominations] || 0;
+      numberValue = Math.min(numberValue, availableValue);
+      // Если после клэмпа число стало меньше исходного — обновим строку тоже
+      if (String(numberValue) !== value) {
+        setInputValues((prev) => ({ ...prev, [name]: String(numberValue) }));
+      }
+    }
+
     updateDenomination(name, numberValue);
+  };
+
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name } = e.target;
+    const current = inputValues[name] ?? "0";
+    if (current === "0") {
+      // Очищаем, чтобы первый введённый символ заменял 0
+      setInputValues((prev) => ({ ...prev, [name]: "" }));
+    } else {
+      // Выделяем весь текст для удобной замены
+      requestAnimationFrame(() => {
+        e.target.select();
+      });
+    }
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name } = e.target;
+    const current = inputValues[name];
+    if (current === "" || current == null) {
+      // Возвращаем 0, если все символы стерты
+      setInputValues((prev) => ({ ...prev, [name]: "0" }));
+      updateDenomination(name, 0);
+      return;
+    }
+    // Синхронизируем число (на случай, если остались лидирующие нули)
+    const normalized = String(parseInt(current, 10) || 0);
+    if (normalized !== current) {
+      setInputValues((prev) => ({ ...prev, [name]: normalized }));
+    }
   };
 
   // Increment and decrement functions
@@ -81,6 +153,8 @@ const DenominationInput: React.FC<DenominationInputProps> = ({
     };
 
     setDenominations(updatedDenominations);
+    // Синхронизируем строковое отображение с числом
+    setInputValues((prev) => ({ ...prev, [name]: String(value) }));
     const newTotal = calculateTotal(updatedDenominations);
     setTotal(newTotal);
     onChange(updatedDenominations, newTotal);
@@ -90,6 +164,19 @@ const DenominationInput: React.FC<DenominationInputProps> = ({
   useEffect(() => {
     setDenominations(initialDenominations);
     setTotal(calculateTotal(initialDenominations));
+    setInputValues({
+      note5000: String(initialDenominations.note5000 ?? 0),
+      note2000: String(initialDenominations.note2000 ?? 0),
+      note1000: String(initialDenominations.note1000 ?? 0),
+      note500: String(initialDenominations.note500 ?? 0),
+      note200: String(initialDenominations.note200 ?? 0),
+      note100: String(initialDenominations.note100 ?? 0),
+      note50: String(initialDenominations.note50 ?? 0),
+      coin10: String(initialDenominations.coin10 ?? 0),
+      coin5: String(initialDenominations.coin5 ?? 0),
+      coin2: String(initialDenominations.coin2 ?? 0),
+      coin1: String(initialDenominations.coin1 ?? 0),
+    });
   }, [initialDenominations]);
 
   // Define denomination items with their labels and values
@@ -262,16 +349,17 @@ const DenominationInput: React.FC<DenominationInputProps> = ({
                   </ButtonGroup>
                   <TextField
                     name={item.name}
-                    type="number"
-                    value={item.value}
+                    type="text"
+                    value={inputValues[item.name] ?? "0"}
                     onChange={handleChange}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
+                    inputMode="numeric"
                     InputProps={{
                       readOnly: readOnly,
                       inputProps: {
-                        min: 0,
-                        max: availableDenominations
-                          ? availableValue
-                          : undefined,
+                        inputMode: "numeric",
+                        pattern: "[0-9]*",
                       },
                       sx: {
                         "& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button":

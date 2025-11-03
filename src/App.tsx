@@ -17,6 +17,7 @@ import ExpenseForm from "./components/ExpenseForm";
 import TerminalForm from "./components/TerminalForm";
 import CashWithdrawalForm from "./components/CashWithdrawalForm";
 import ShiftSummary from "./components/ShiftSummary";
+import ShiftClosedScreen from "./components/ShiftClosedScreen";
 import DenominationModal from "./components/DenominationModal";
 import InitialBalanceForm from "./components/InitialBalanceForm";
 import CashReturnsForm from "./components/CashReturnsForm";
@@ -89,10 +90,24 @@ const MainContent: React.FC = () => {
 
   // Двухшаговый режим: 1 — ввод данных, 2 — инкассация и закрытие смены
   const [step, setStep] = useState<1 | 2>(1);
+  // Экран после успешного закрытия смены
+  const [isShiftClosed, setIsShiftClosed] = useState<boolean>(false);
 
   // Функция для сброса шага на первый
   const handleResetStep = () => {
     setStep(1);
+  };
+
+  // Переход на экран «Смена закрыта»
+  const handleShiftClosed = () => {
+    setIsShiftClosed(true);
+  };
+
+  // Открытие новой смены: сброс данных и возврат на начальный экран
+  const handleOpenNewShift = () => {
+    resetShift();
+    handleResetStep();
+    setIsShiftClosed(false);
   };
 
   // Стиль для верхних карточек с уменьшенной высотой
@@ -117,11 +132,22 @@ const MainContent: React.FC = () => {
     },
   };
 
+  if (isShiftClosed) {
+    return (
+      <Box sx={{ p: 1 }}>
+        {/* <Typography variant="h4" align="center" sx={{ mb: 2 }}>
+          Учет кассы
+        </Typography> */}
+        <ShiftClosedScreen onOpenNewShift={handleOpenNewShift} />
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ p: 1 }}>
-      <Typography variant="h4" align="center" sx={{ mb: 2 }}>
+      {/* <Typography variant="h4" align="center" sx={{ mb: 2 }}>
         Учет кассы
-      </Typography>
+      </Typography> */}
 
       <Box
         sx={{
@@ -293,6 +319,7 @@ const MainContent: React.FC = () => {
                     onGetShiftData={getShiftData}
                     onResetShift={resetShift}
                     onResetStep={handleResetStep}
+                    onShiftClosed={handleShiftClosed}
                   />
                 </Box>
               </Box>

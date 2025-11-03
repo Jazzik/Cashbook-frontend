@@ -69,9 +69,15 @@ const TerminalForm: React.FC<TerminalFormProps> = ({
   const [transferAmount, setTransferAmount] = useState<string>("");
   const { cardColors } = useSettings();
 
+  const sanitizeDigits = (value: string) => value.replace(/\D+/g, "");
+  const stripLeadingZeros = (value: string) =>
+    value.length > 1 ? value.replace(/^0+/, "") || "0" : value;
+
   const handleTerminalChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value;
+    let value = sanitizeDigits(event.target.value);
+    value = stripLeadingZeros(value);
     setTerminalValue(value);
+    if (value === "") return;
     const numValue = parseFloat(value);
     if (!isNaN(numValue)) {
       onUpdateTerminal(numValue);
@@ -81,8 +87,10 @@ const TerminalForm: React.FC<TerminalFormProps> = ({
   const handleTerminalReturnsChange = (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const value = event.target.value;
+    let value = sanitizeDigits(event.target.value);
+    value = stripLeadingZeros(value);
     setTerminalReturnValue(value);
+    if (value === "") return;
     const numValue = parseFloat(value);
     if (!isNaN(numValue)) {
       onUpdateTerminalReturns(numValue);
@@ -92,13 +100,41 @@ const TerminalForm: React.FC<TerminalFormProps> = ({
   const handleTerminalTransferChange = (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const value = event.target.value;
+    let value = sanitizeDigits(event.target.value);
+    value = stripLeadingZeros(value);
     setTerminalTransferValue(value);
+    if (value === "") return;
     const numValue = parseFloat(value);
     if (!isNaN(numValue)) {
       onUpdateTerminalTransfer(numValue);
     }
   };
+
+  const handleFocusCommon =
+    (value: string, setValue: React.Dispatch<React.SetStateAction<string>>) =>
+    (e: React.FocusEvent<HTMLInputElement>) => {
+      if (value === "0") {
+        setValue("");
+      } else {
+        requestAnimationFrame(() => e.target.select());
+      }
+    };
+
+  const handleBlurCommon =
+    (
+      value: string,
+      setValue: React.Dispatch<React.SetStateAction<string>>,
+      onUpdate?: (n: number) => void
+    ) =>
+    () => {
+      if (value === "" || value == null) {
+        setValue("0");
+        if (onUpdate) onUpdate(0);
+        return;
+      }
+      const normalized = stripLeadingZeros(sanitizeDigits(value));
+      if (normalized !== value) setValue(normalized);
+    };
 
   const incrementTerminal = () => {
     const newValue = terminal + 50;
@@ -153,6 +189,12 @@ const TerminalForm: React.FC<TerminalFormProps> = ({
   const handleSubmit = () => {
     onUpdateTerminal(parseFloat(terminalValue));
     onUpdateTerminalReturns(parseFloat(terminalReturnValue));
+    // Auto-add pending transfer amount if user entered it but didn't click "Добавить"
+    const pendingAmount = parseFloat(transferAmount);
+    if (onAddTransfer && !isNaN(pendingAmount) && pendingAmount > 0) {
+      onAddTransfer("Перевод", pendingAmount);
+      setTransferAmount("");
+    }
     // Do not override transfers-driven total here
     handleClose();
   };
@@ -439,12 +481,20 @@ const TerminalForm: React.FC<TerminalFormProps> = ({
                 <TextField
                   fullWidth
                   label="Сумма"
-                  type="number"
-                  value={terminalValue || ""}
+                  type="text"
+                  value={terminalValue}
                   onChange={handleTerminalChange}
+                  onFocus={handleFocusCommon(terminalValue, setTerminalValue)}
+                  onBlur={handleBlurCommon(
+                    terminalValue,
+                    setTerminalValue,
+                    onUpdateTerminal
+                  )}
+                  inputMode="numeric"
                   InputProps={{
                     inputProps: {
-                      min: 0,
+                      inputMode: "numeric",
+                      pattern: "[0-9]*",
                       style: {
                         textAlign: "center",
                         fontWeight: "bold",
@@ -504,12 +554,23 @@ const TerminalForm: React.FC<TerminalFormProps> = ({
                 <TextField
                   fullWidth
                   label="Сумма"
-                  type="number"
-                  value={terminalReturnValue || ""}
+                  type="text"
+                  value={terminalReturnValue}
                   onChange={handleTerminalReturnsChange}
+                  onFocus={handleFocusCommon(
+                    terminalReturnValue,
+                    setTerminalReturnValue
+                  )}
+                  onBlur={handleBlurCommon(
+                    terminalReturnValue,
+                    setTerminalReturnValue,
+                    onUpdateTerminalReturns
+                  )}
+                  inputMode="numeric"
                   InputProps={{
                     inputProps: {
-                      min: 0,
+                      inputMode: "numeric",
+                      pattern: "[0-9]*",
                       style: {
                         textAlign: "center",
                         fontWeight: "bold",
@@ -556,9 +617,16 @@ const TerminalForm: React.FC<TerminalFormProps> = ({
                 <TextField
                   fullWidth
                   label="Сумма"
-                  type="number"
+                  type="text"
                   value={transferAmount}
-                  onChange={(e) => setTransferAmount(e.target.value)}
+                  onChange={(e) => {
+                    let v = sanitizeDigits(e.target.value);
+                    v = stripLeadingZeros(v);
+                    setTransferAmount(v);
+                  }}
+                  onFocus={handleFocusCommon(transferAmount, setTransferAmount)}
+                  onBlur={handleBlurCommon(transferAmount, setTransferAmount)}
+                  inputMode="numeric"
                   InputProps={{
                     endAdornment: (
                       <InputAdornment position="end">₽</InputAdornment>
