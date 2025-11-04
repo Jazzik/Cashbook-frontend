@@ -162,6 +162,10 @@ const ShiftSummary: React.FC<ShiftSummaryProps> = ({
         try {
           await api.submitShiftData(submitData, screenshot || undefined);
           setOpen(false);
+          // Обнуляем данные смены сразу после успешной отправки
+          // (сохраняя старую логику: конечный остаток становится начальным для новой смены)
+          onResetShift();
+          onResetStep();
           onShiftClosed();
           break;
         } catch (err) {

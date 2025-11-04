@@ -103,10 +103,9 @@ const MainContent: React.FC = () => {
     setIsShiftClosed(true);
   };
 
-  // Открытие новой смены: сброс данных и возврат на начальный экран
+  // Открытие новой смены: возврат на начальный экран
+  // Данные уже обнулены после успешной отправки в ShiftSummary
   const handleOpenNewShift = () => {
-    resetShift();
-    handleResetStep();
     setIsShiftClosed(false);
   };
 

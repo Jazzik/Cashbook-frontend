@@ -250,14 +250,14 @@ pipeline {
       }
       agent { label 'build-node' }
       steps {
-        input message: 'Deploy Frontend to Production?', ok: 'Deploy', parameters: [
-          choice(name: 'DEPLOY_ACTION', choices: ['Deploy', 'Skip'], description: 'Choose deployment action')
-        ]
+        // input message: 'Deploy Frontend to Production?', ok: 'Deploy', parameters: [
+        //   choice(name: 'DEPLOY_ACTION', choices: ['Deploy', 'Skip'], description: 'Choose deployment action')
+        // ]
         script {
-          if (params.DEPLOY_ACTION == 'Skip') {
-            echo 'Frontend production deployment skipped by user'
-            return
-          }
+          // if (params.DEPLOY_ACTION == 'Skip') {
+          //   echo 'Frontend production deployment skipped by user'
+          //   return
+          // }
 
           try {
             echo 'Deploying tested frontend version to production'
