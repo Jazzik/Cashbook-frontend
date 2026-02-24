@@ -1,3 +1,70 @@
+// Helper function to get all nodes with a given label
+def getNodesByLabel(label) {
+  return Jenkins.instance.nodes.findAll { node ->
+    node.labelString.tokenize(' ').contains(label) && node.toComputer()?.isOnline()
+  }.collect { it.name }
+}
+
+// Helper function to deploy and verify shops on the current node
+def deployShops(shopsList, imageTag) {
+  sh """
+    # Ensure Docker network exists
+    docker network inspect cashbook-network || docker network create cashbook-network
+    # Pull the image
+    docker pull \$DOCKER_REGISTRY/\$IMAGE_NAME:${imageTag}
+  """
+
+  shopsList.each { shop ->
+    def shopPort = env."${shop.toUpperCase()}_PORT"
+    def backendPort = env."${shop.toUpperCase()}_BACKEND_PORT"
+    echo "Deploying ${shop} on port ${shopPort}"
+
+    sh """
+      docker rm -f ${shop}_frontend_container || true
+      docker run --name ${shop}_frontend_container \\
+        --network cashbook-network \\
+        --restart unless-stopped \\
+        -d -p 0.0.0.0:${shopPort}:80 \\
+        -e BACKEND_URL=http://${shop}_backend_container:${backendPort} \\
+        \$DOCKER_REGISTRY/\$IMAGE_NAME:${imageTag}
+    """
+  }
+
+  // Wait and health check
+  shopsList.each { shop ->
+    waitForContainer("${shop}_frontend_container", 30)
+  }
+
+  shopsList.each { shop ->
+    def shopPort = env."${shop.toUpperCase()}_PORT"
+    echo "Health check for ${shop} on port ${shopPort}"
+
+    def healthCheckPassed = false
+    def maxRetries = 3
+    def retryCount = 0
+
+    while (!healthCheckPassed && retryCount < maxRetries) {
+      try {
+        sh """
+          docker exec ${shop}_frontend_container curl -f http://localhost/ || (
+            echo "Frontend Health Check Failed: Nginx not responding for ${shop}" && exit 1
+          )
+        """
+        healthCheckPassed = true
+        echo "Health check passed for ${shop}"
+      } catch (Exception e) {
+        retryCount++
+        echo "Health check failed for ${shop}, attempt ${retryCount}/${maxRetries}: ${e.getMessage()}"
+        if (retryCount < maxRetries) {
+          sh 'sleep 5'
+        } else {
+          throw new Exception("Health check failed for ${shop} after ${maxRetries} attempts")
+        }
+      }
+    }
+  }
+}
+
 // Helper function to wait for container readiness
 def waitForContainer(containerName, maxWaitSeconds = 30) {
   def startTime = System.currentTimeMillis()
@@ -133,6 +200,9 @@ pipeline {
 
             // Create a dummy backend container for testing
             sh '''
+              # Ensure Docker network exists before starting any containers
+              docker network inspect cashbook-network || docker network create cashbook-network
+
               # Create dummy backend container for testing
               docker rm -f testing_backend_container || true
               docker run --name testing_backend_container --network cashbook-network -d nginx:alpine
@@ -248,7 +318,7 @@ pipeline {
       when {
         branch 'test'
       }
-      agent { label 'build-node' }
+      agent none
       steps {
         // input message: 'Deploy Frontend to Production?', ok: 'Deploy', parameters: [
         //   choice(name: 'DEPLOY_ACTION', choices: ['Deploy', 'Skip'], description: 'Choose deployment action')
@@ -260,13 +330,7 @@ pipeline {
           // }
 
           try {
-            echo 'Deploying tested frontend version to production'
-
-            // Pull the tested image
-            sh '''
-              # Pull the image using the latest tag
-              docker pull $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG
-            '''
+            echo 'Deploying tested frontend version to production on all build nodes'
 
             // Set production environment variables
             env.SHOPS = 'makarov,makarov2,yuz1'
@@ -277,32 +341,21 @@ pipeline {
             env.YUZ1_PORT = '3002'
             env.YUZ1_BACKEND_PORT = '5002'
 
-            // Deploy to production
             def shopsList = env.SHOPS.split(',')
-            shopsList.each { shop ->
-              def shopPort = env."${shop.toUpperCase()}_PORT"
-              def backendPort = env."${shop.toUpperCase()}_BACKEND_PORT"
-              echo "Deploying ${shop} to production on port ${shopPort}"
+            def buildNodes = getNodesByLabel('build-node')
+            echo "Deploying on nodes: ${buildNodes}"
 
-              sh '''
-                # Ensure Docker network exists
-                docker network inspect cashbook-network || docker network create cashbook-network
-              '''
-              sh """
-                # Stop and remove if container exists
-                docker rm -f ${shop}_frontend_container || true
-              """
-              sh """
-                docker run --name ${shop}_frontend_container \\
-                  --network cashbook-network \\
-                  --restart unless-stopped \\
-                  -d -p 0.0.0.0:${shopPort}:80 \\
-                  -e BACKEND_URL=http://${shop}_backend_container:${backendPort} \\
-                  \$DOCKER_REGISTRY/\$IMAGE_NAME:\$DOCKER_IMAGE_TAG
-              """
+            def deployTasks = buildNodes.collectEntries { nodeName ->
+              ["Deploy on ${nodeName}": {
+                node(nodeName) {
+                  deployShops(shopsList, env.DOCKER_IMAGE_TAG)
+                }
+              }]
             }
 
-            echo 'Frontend production deployment completed successfully'
+            parallel deployTasks
+
+            echo 'Frontend production deployment completed successfully on all nodes'
           } catch (Exception e) {
             echo "Error in frontend production deployment: ${e.getMessage()}"
             currentBuild.result = 'FAILURE'
@@ -313,84 +366,28 @@ pipeline {
     }
 
     stage('Deploy and Verify') {
-      agent { label 'build-node' }
+      agent none
       when {
         branch 'main'
       }
       steps {
-        unstash 'source-code'
-        unstash 'jenkins-env'
         script {
           try {
-            // Pull the image using the latest tag
-            sh '''
-              # Pull the image using the latest tag
-              docker pull $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG
-            '''
-
-            // Deploy containers
             def shopsList = env.SHOPS.split(',')
-            shopsList.each { shop ->
-              def shopPort = env."${shop.toUpperCase()}_PORT"
-              def backendPort = env."${shop.toUpperCase()}_BACKEND_PORT"
-              echo "Deploying ${shop} on port ${shopPort}"
+            def buildNodes = getNodesByLabel('build-node')
+            echo "Deploying on nodes: ${buildNodes}"
 
-              sh '''
-                # Ensure Docker network exists
-                docker network inspect cashbook-network || docker network create cashbook-network
-              '''
-              sh """
-                # Stop and remove if container exists
-                docker rm -f ${shop}_frontend_container || true
-              """
-              sh """
-                docker run --name ${shop}_frontend_container \\
-                  --network cashbook-network \\
-                  --restart unless-stopped \\
-                  -d -p 0.0.0.0:${shopPort}:80 \\
-                  -e BACKEND_URL=http://${shop}_backend_container:${backendPort} \\
-                  \$DOCKER_REGISTRY/\$IMAGE_NAME:\$DOCKER_IMAGE_TAG
-              """
-            }
-
-            // Wait for containers to initialize and verify
-            echo 'Waiting for containers to initialize...'
-            shopsList.each { shop ->
-              waitForContainer("${shop}_frontend_container", 30)
-            }
-
-            // Health check with retry logic
-            shopsList.each { shop ->
-              def shopPort = env."${shop.toUpperCase()}_PORT"
-              echo "Testing frontend container for ${shop} on port ${shopPort}"
-
-              def healthCheckPassed = false
-              def maxRetries = 3
-              def retryCount = 0
-
-              while (!healthCheckPassed && retryCount < maxRetries) {
-                try {
-                  // Execute curl from inside the frontend container to test the internal nginx routing
-                  sh """
-                    docker exec ${shop}_frontend_container curl -f http://localhost/ || (
-                      echo "Frontend Health Check Failed: Nginx not responding for ${shop}" && exit 1
-                    )
-                  """
-                  healthCheckPassed = true
-                  echo "Frontend Health Check Successful for ${shop}: Nginx is responding correctly"
-                } catch (Exception e) {
-                  retryCount++
-                  echo "Health check failed for ${shop}, attempt ${retryCount}/${maxRetries}: ${e.getMessage()}"
-                  if (retryCount < maxRetries) {
-                    sh 'sleep 5'
-                  } else {
-                    throw new Exception("Health check failed for ${shop} after ${maxRetries} attempts")
-                  }
+            def deployTasks = buildNodes.collectEntries { nodeName ->
+              ["Deploy on ${nodeName}": {
+                node(nodeName) {
+                  deployShops(shopsList, env.DOCKER_IMAGE_TAG)
                 }
-              }
+              }]
             }
 
-            echo 'Production containers deployed and verified successfully'
+            parallel deployTasks
+
+            echo 'Production containers deployed and verified successfully on all nodes'
           } catch (Exception e) {
             echo "Error in Deploy and Verify stage: ${e.getMessage()}"
             currentBuild.result = 'FAILURE'
@@ -403,20 +400,25 @@ pipeline {
 
   post {
     always {
-      node('build-node') {
-        script {
-          // Cleanup any remaining test containers
-          try {
-            sh '''
-              # Cleanup test containers
-              docker rm -f testing_frontend_container || true
-              docker rm -f testing_backend_container || true
-            '''
-            echo 'Cleanup completed'
-          } catch (Exception e) {
-            echo "Error during cleanup: ${e.getMessage()}"
-          }
+      script {
+        def buildNodes = getNodesByLabel('build-node')
+        def cleanupTasks = buildNodes.collectEntries { nodeName ->
+          ["Cleanup on ${nodeName}": {
+            node(nodeName) {
+              try {
+                sh '''
+                  # Cleanup test containers
+                  docker rm -f testing_frontend_container || true
+                  docker rm -f testing_backend_container || true
+                '''
+                echo "Cleanup completed on ${nodeName}"
+              } catch (Exception e) {
+                echo "Error during cleanup on ${nodeName}: ${e.getMessage()}"
+              }
+            }
+          }]
         }
+        parallel cleanupTasks
       }
     }
     failure {
