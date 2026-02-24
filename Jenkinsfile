@@ -3,7 +3,7 @@ def getNodesByLabel(label) {
   return Jenkins.instance.nodes.findAll { node ->
     node.labelString.tokenize(' ').contains(label) && node.toComputer()?.isOnline()
   }.collect { it.name }
-}
+  }
 
 // Helper function to deploy and verify shops on the current node
 def deployShops(shopsList, imageTag) {
@@ -179,7 +179,8 @@ pipeline {
       }
     }
 
-    stage('Build and Test') {
+    stage('Build, Test and Push') {
+      // Single agent for all steps — image must be built and pushed on the same node
       agent { label 'build-node' }
       when {
         branch 'test'
@@ -213,10 +214,6 @@ pipeline {
             shopsList.each { shop ->
               echo "Deploying ${shop} for testing"
 
-              sh '''
-                # Ensure Docker network exists
-                docker network inspect cashbook-network || docker network create cashbook-network
-              '''
               sh """
                 # Stop and remove if container exists
                 docker rm -f ${shop}_frontend_container || true
@@ -271,33 +268,16 @@ pipeline {
 
               // Cleanup test container
               sh """
-                # Stop and remove test container
                 docker rm -f ${shop}_frontend_container || true
               """
             }
 
             // Cleanup dummy backend container
             sh '''
-              # Clean up the dummy backend container
               docker rm -f testing_backend_container || true
             '''
-          } catch (Exception e) {
-            echo "Error in Build and Test stage: ${e.getMessage()}"
-            currentBuild.result = 'FAILURE'
-            throw e
-          }
-        }
-      }
-    }
 
-    stage('Push to Registry') {
-      when {
-        branch 'test'
-      }
-      agent { label 'build-node' }
-      steps {
-        script {
-          try {
+            // Push to registry on the same node where image was built
             echo 'Pushing Docker image to Docker Hub'
             sh '''
               docker login -u $DOCKER_REGISTRY -p $DOCKER_PASSWORD
@@ -306,7 +286,7 @@ pipeline {
             '''
             echo 'Docker images pushed successfully'
           } catch (Exception e) {
-            echo "Error pushing Docker images: ${e.getMessage()}"
+            echo "Error in Build, Test and Push stage: ${e.getMessage()}"
             currentBuild.result = 'FAILURE'
             throw e
           }
