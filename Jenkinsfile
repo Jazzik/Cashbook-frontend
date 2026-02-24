@@ -6,8 +6,8 @@ def waitForContainer(containerName, maxWaitSeconds = 30) {
   while (System.currentTimeMillis() - startTime < maxWaitMs) {
     try {
       // Check if container is running
-      def containerStatus = bat(
-        script: "docker ps -f name=${containerName} --format \"{{.Status}}\"",
+      def containerStatus = sh(
+        script: "docker ps -f name=${containerName} --format '{{.Status}}'",
         returnStdout: true
       ).trim()
 
@@ -17,10 +17,10 @@ def waitForContainer(containerName, maxWaitSeconds = 30) {
       }
 
       // Wait 2 seconds before next check
-      bat 'timeout /t 2 /nobreak > nul'
+      sh 'sleep 2'
     } catch (Exception e) {
       echo "Waiting for container ${containerName} to be ready..."
-      bat 'timeout /t 2 /nobreak > nul'
+      sh 'sleep 2'
     }
   }
 
@@ -122,19 +122,19 @@ pipeline {
           try {
             // Build Docker image
             echo 'Building Docker image'
-            bat '''
-              docker build -t %DOCKER_REGISTRY%/%IMAGE_NAME%:%COMMIT_HASH% -t %DOCKER_REGISTRY%/%IMAGE_NAME%:%DOCKER_IMAGE_TAG% .
+            sh '''
+              docker build -t $DOCKER_REGISTRY/$IMAGE_NAME:$COMMIT_HASH -t $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG .
             '''
-            bat 'docker images | findstr %IMAGE_NAME%'
+            sh 'docker images | grep $IMAGE_NAME'
             echo 'Docker image built successfully'
 
             // Test in test environment
             unstash 'jenkins-env'
 
             // Create a dummy backend container for testing
-            bat '''
-              REM Create dummy backend container for testing
-              docker rm -f testing_backend_container || exit /b 0
+            sh '''
+              # Create dummy backend container for testing
+              docker rm -f testing_backend_container || true
               docker run --name testing_backend_container --network cashbook-network -d nginx:alpine
             '''
 
@@ -143,21 +143,21 @@ pipeline {
             shopsList.each { shop ->
               echo "Deploying ${shop} for testing"
 
-              bat '''
-                REM Ensure Docker network exists
+              sh '''
+                # Ensure Docker network exists
                 docker network inspect cashbook-network || docker network create cashbook-network
               '''
-              bat """
-                REM Stop and remove if container exists
-                docker rm -f ${shop}_frontend_container || exit /b 0
+              sh """
+                # Stop and remove if container exists
+                docker rm -f ${shop}_frontend_container || true
               """
-              bat """
-                REM Run container with shop-specific parameters
-                docker run --name ${shop}_frontend_container ^
-                  --network cashbook-network ^
-                  -d -p 0.0.0.0:${env.TESTING_PORT}:80 ^
-                  -e BACKEND_URL=http://${shop}_backend_container:${env.TESTING_BACKEND_PORT} ^
-                  %DOCKER_REGISTRY%/%IMAGE_NAME%:%DOCKER_IMAGE_TAG%
+              sh """
+                # Run container with shop-specific parameters
+                docker run --name ${shop}_frontend_container \\
+                  --network cashbook-network \\
+                  -d -p 0.0.0.0:${env.TESTING_PORT}:80 \\
+                  -e BACKEND_URL=http://${shop}_backend_container:${env.TESTING_BACKEND_PORT} \\
+                  \$DOCKER_REGISTRY/\$IMAGE_NAME:\$DOCKER_IMAGE_TAG
               """
             }
 
@@ -177,11 +177,11 @@ pipeline {
 
               while (!healthCheckPassed && retryCount < maxRetries) {
                 try {
-                  bat """
-                    REM Check if container is running
-                    docker ps -f name=${shop}_frontend_container --format "{{.Status}}"
+                  sh """
+                    # Check if container is running
+                    docker ps -f name=${shop}_frontend_container --format '{{.Status}}'
 
-                    REM Test if nginx is responding
+                    # Test if nginx is responding
                     docker exec ${shop}_frontend_container curl -f http://localhost/ || (
                       echo "Frontend Health Check Failed: Nginx not responding for ${shop}" && exit 1
                     )
@@ -192,7 +192,7 @@ pipeline {
                   retryCount++
                   echo "Health check failed for ${shop}, attempt ${retryCount}/${maxRetries}: ${e.getMessage()}"
                   if (retryCount < maxRetries) {
-                    bat 'timeout /t 5 /nobreak > nul'
+                    sh 'sleep 5'
                   } else {
                     throw new Exception("Health check failed for ${shop} after ${maxRetries} attempts")
                   }
@@ -200,16 +200,16 @@ pipeline {
               }
 
               // Cleanup test container
-              bat """
-                REM Stop and remove test container
-                docker rm -f ${shop}_frontend_container || exit /b 0
+              sh """
+                # Stop and remove test container
+                docker rm -f ${shop}_frontend_container || true
               """
             }
 
             // Cleanup dummy backend container
-            bat '''
-              REM Clean up the dummy backend container
-              docker rm -f testing_backend_container || exit /b 0
+            sh '''
+              # Clean up the dummy backend container
+              docker rm -f testing_backend_container || true
             '''
           } catch (Exception e) {
             echo "Error in Build and Test stage: ${e.getMessage()}"
@@ -229,10 +229,10 @@ pipeline {
         script {
           try {
             echo 'Pushing Docker image to Docker Hub'
-            bat '''
-              docker login -u %DOCKER_REGISTRY% -p %DOCKER_PASSWORD%
-              docker push %DOCKER_REGISTRY%/%IMAGE_NAME%:%COMMIT_HASH%
-              docker push %DOCKER_REGISTRY%/%IMAGE_NAME%:%DOCKER_IMAGE_TAG%
+            sh '''
+              docker login -u $DOCKER_REGISTRY -p $DOCKER_PASSWORD
+              docker push $DOCKER_REGISTRY/$IMAGE_NAME:$COMMIT_HASH
+              docker push $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG
             '''
             echo 'Docker images pushed successfully'
           } catch (Exception e) {
@@ -263,9 +263,9 @@ pipeline {
             echo 'Deploying tested frontend version to production'
 
             // Pull the tested image
-            bat '''
-              REM Pull the image using the latest tag
-              docker pull %DOCKER_REGISTRY%/%IMAGE_NAME%:%DOCKER_IMAGE_TAG%
+            sh '''
+              # Pull the image using the latest tag
+              docker pull $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG
             '''
 
             // Set production environment variables
@@ -284,21 +284,21 @@ pipeline {
               def backendPort = env."${shop.toUpperCase()}_BACKEND_PORT"
               echo "Deploying ${shop} to production on port ${shopPort}"
 
-              bat '''
-                REM Ensure Docker network exists
+              sh '''
+                # Ensure Docker network exists
                 docker network inspect cashbook-network || docker network create cashbook-network
               '''
-              bat """
-                REM Stop and remove if container exists
-                docker rm -f ${shop}_frontend_container || exit /b 0
+              sh """
+                # Stop and remove if container exists
+                docker rm -f ${shop}_frontend_container || true
               """
-              bat """
-                docker run --name ${shop}_frontend_container ^
-                  --network cashbook-network ^
-                  --restart unless-stopped ^
-                  -d -p 0.0.0.0:${shopPort}:80 ^
-                  -e BACKEND_URL=http://${shop}_backend_container:${backendPort} ^
-                  %DOCKER_REGISTRY%/%IMAGE_NAME%:%DOCKER_IMAGE_TAG%
+              sh """
+                docker run --name ${shop}_frontend_container \\
+                  --network cashbook-network \\
+                  --restart unless-stopped \\
+                  -d -p 0.0.0.0:${shopPort}:80 \\
+                  -e BACKEND_URL=http://${shop}_backend_container:${backendPort} \\
+                  \$DOCKER_REGISTRY/\$IMAGE_NAME:\$DOCKER_IMAGE_TAG
               """
             }
 
@@ -323,9 +323,9 @@ pipeline {
         script {
           try {
             // Pull the image using the latest tag
-            bat '''
-              REM Pull the image using the latest tag
-              docker pull %DOCKER_REGISTRY%/%IMAGE_NAME%:%DOCKER_IMAGE_TAG%
+            sh '''
+              # Pull the image using the latest tag
+              docker pull $DOCKER_REGISTRY/$IMAGE_NAME:$DOCKER_IMAGE_TAG
             '''
 
             // Deploy containers
@@ -335,21 +335,21 @@ pipeline {
               def backendPort = env."${shop.toUpperCase()}_BACKEND_PORT"
               echo "Deploying ${shop} on port ${shopPort}"
 
-              bat '''
-                REM Ensure Docker network exists
+              sh '''
+                # Ensure Docker network exists
                 docker network inspect cashbook-network || docker network create cashbook-network
               '''
-              bat """
-                REM Stop and remove if container exists
-                docker rm -f ${shop}_frontend_container || exit /b 0
+              sh """
+                # Stop and remove if container exists
+                docker rm -f ${shop}_frontend_container || true
               """
-              bat """
-                docker run --name ${shop}_frontend_container ^
-                  --network cashbook-network ^
-                  --restart unless-stopped ^
-                  -d -p 0.0.0.0:${shopPort}:80 ^
-                  -e BACKEND_URL=http://${shop}_backend_container:${backendPort} ^
-                  %DOCKER_REGISTRY%/%IMAGE_NAME%:%DOCKER_IMAGE_TAG%
+              sh """
+                docker run --name ${shop}_frontend_container \\
+                  --network cashbook-network \\
+                  --restart unless-stopped \\
+                  -d -p 0.0.0.0:${shopPort}:80 \\
+                  -e BACKEND_URL=http://${shop}_backend_container:${backendPort} \\
+                  \$DOCKER_REGISTRY/\$IMAGE_NAME:\$DOCKER_IMAGE_TAG
               """
             }
 
@@ -371,7 +371,7 @@ pipeline {
               while (!healthCheckPassed && retryCount < maxRetries) {
                 try {
                   // Execute curl from inside the frontend container to test the internal nginx routing
-                  bat """
+                  sh """
                     docker exec ${shop}_frontend_container curl -f http://localhost/ || (
                       echo "Frontend Health Check Failed: Nginx not responding for ${shop}" && exit 1
                     )
@@ -382,7 +382,7 @@ pipeline {
                   retryCount++
                   echo "Health check failed for ${shop}, attempt ${retryCount}/${maxRetries}: ${e.getMessage()}"
                   if (retryCount < maxRetries) {
-                    bat 'timeout /t 5 /nobreak > nul'
+                    sh 'sleep 5'
                   } else {
                     throw new Exception("Health check failed for ${shop} after ${maxRetries} attempts")
                   }
@@ -407,10 +407,10 @@ pipeline {
         script {
           // Cleanup any remaining test containers
           try {
-            bat '''
-              REM Cleanup test containers
-              docker rm -f testing_frontend_container || exit /b 0
-              docker rm -f testing_backend_container || exit /b 0
+            sh '''
+              # Cleanup test containers
+              docker rm -f testing_frontend_container || true
+              docker rm -f testing_backend_container || true
             '''
             echo 'Cleanup completed'
           } catch (Exception e) {
