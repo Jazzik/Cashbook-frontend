@@ -322,7 +322,7 @@ pipeline {
             env.YUZ1_BACKEND_PORT = '5002'
 
             def shopsList = env.SHOPS.split(',')
-            def buildNodes = getNodesByLabel('build-node')
+            def buildNodes = getNodesByLabel('linux')
             echo "Deploying on nodes: ${buildNodes}"
 
             def deployTasks = buildNodes.collectEntries { nodeName ->
@@ -354,7 +354,7 @@ pipeline {
         script {
           try {
             def shopsList = env.SHOPS.split(',')
-            def buildNodes = getNodesByLabel('build-node')
+            def buildNodes = getNodesByLabel('linux')
             echo "Deploying on nodes: ${buildNodes}"
 
             def deployTasks = buildNodes.collectEntries { nodeName ->
@@ -381,7 +381,7 @@ pipeline {
   post {
     always {
       script {
-        def buildNodes = getNodesByLabel('build-node')
+        def buildNodes = getNodesByLabel('linux')
         def cleanupTasks = buildNodes.collectEntries { nodeName ->
           ["Cleanup on ${nodeName}": {
             node(nodeName) {
