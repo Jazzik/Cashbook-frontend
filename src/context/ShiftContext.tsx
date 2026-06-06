@@ -123,6 +123,7 @@ export const ShiftProvider: React.FC<{ children: ReactNode }> = ({
 
   const [finalBalance, setFinalBalance] = useState<number>(0);
   const hasHydratedRef = useRef(false);
+  const isSyncingFromStorageRef = useRef(false);
 
   // Update functions
   const updateInitialBalance = (denominations: Denominations) => {
@@ -258,6 +259,92 @@ export const ShiftProvider: React.FC<{ children: ReactNode }> = ({
     setTerminalTransfer(transfers.total);
   }, [transfers.total]);
 
+  const applyParsedState = useCallback((parsed: any) => {
+    if (!parsed || typeof parsed !== "object") return;
+    if (
+      parsed.initialBalance &&
+      typeof parsed.initialBalance.total === "number"
+    ) {
+      setInitialBalance({
+        denominations: {
+          ...emptyDenominations,
+          ...(parsed.initialBalance.denominations || {}),
+        },
+        total: Number(parsed.initialBalance.total) || 0,
+      });
+    }
+    if (Array.isArray(parsed.expenses)) {
+      setExpenses(parsed.expenses);
+    }
+    if (parsed.cashReturns && Array.isArray(parsed.cashReturns.items)) {
+      setCashReturns({
+        items: parsed.cashReturns.items,
+        total:
+          Number(parsed.cashReturns.total) ||
+          parsed.cashReturns.items.reduce(
+            (s: number, i: any) => s + Number(i.amount || 0),
+            0
+          ),
+      });
+    }
+    if (parsed.cashDeposits && Array.isArray(parsed.cashDeposits.items)) {
+      setCashDeposits({
+        items: parsed.cashDeposits.items,
+        total:
+          Number(parsed.cashDeposits.total) ||
+          parsed.cashDeposits.items.reduce(
+            (s: number, i: any) => s + Number(i.amount || 0),
+            0
+          ),
+      });
+    }
+    if (typeof parsed.terminal === "number") setTerminal(parsed.terminal);
+    if (typeof parsed.terminalReturns === "number")
+      setTerminalReturns(parsed.terminalReturns);
+    if (parsed.transfers && Array.isArray(parsed.transfers.items)) {
+      const computedTotal =
+        Number(parsed.transfers.total) ||
+        parsed.transfers.items.reduce(
+          (s: number, i: any) => s + Number(i.amount || 0),
+          0
+        );
+      setTransfers({
+        items: parsed.transfers.items,
+        total: computedTotal,
+      });
+      setTerminalTransfer(computedTotal);
+    } else if (typeof parsed.terminalTransfer === "number") {
+      // Backward compatibility if no transfers stored previously
+      setTerminalTransfer(parsed.terminalTransfer);
+    }
+    if (
+      parsed.cashInRegister &&
+      typeof parsed.cashInRegister.total === "number"
+    ) {
+      setCashInRegister({
+        denominations: {
+          ...emptyDenominations,
+          ...(parsed.cashInRegister.denominations || {}),
+        },
+        total: Number(parsed.cashInRegister.total) || 0,
+      });
+    }
+    if (
+      parsed.cashWithdrawal &&
+      typeof parsed.cashWithdrawal.total === "number"
+    ) {
+      setCashWithdrawal({
+        denominations: {
+          ...emptyDenominations,
+          ...(parsed.cashWithdrawal.denominations || {}),
+        },
+        total: Number(parsed.cashWithdrawal.total) || 0,
+      });
+    }
+    if (typeof parsed.finalBalance === "number")
+      setFinalBalance(parsed.finalBalance);
+  }, []);
+
   // Load saved shift state on mount
   useEffect(() => {
     try {
@@ -267,90 +354,7 @@ export const ShiftProvider: React.FC<{ children: ReactNode }> = ({
           : null;
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === "object") {
-          if (
-            parsed.initialBalance &&
-            typeof parsed.initialBalance.total === "number"
-          ) {
-            setInitialBalance({
-              denominations: {
-                ...emptyDenominations,
-                ...(parsed.initialBalance.denominations || {}),
-              },
-              total: Number(parsed.initialBalance.total) || 0,
-            });
-          }
-          if (Array.isArray(parsed.expenses)) {
-            setExpenses(parsed.expenses);
-          }
-          if (parsed.cashReturns && Array.isArray(parsed.cashReturns.items)) {
-            setCashReturns({
-              items: parsed.cashReturns.items,
-              total:
-                Number(parsed.cashReturns.total) ||
-                parsed.cashReturns.items.reduce(
-                  (s: number, i: any) => s + Number(i.amount || 0),
-                  0
-                ),
-            });
-          }
-          if (parsed.cashDeposits && Array.isArray(parsed.cashDeposits.items)) {
-            setCashDeposits({
-              items: parsed.cashDeposits.items,
-              total:
-                Number(parsed.cashDeposits.total) ||
-                parsed.cashDeposits.items.reduce(
-                  (s: number, i: any) => s + Number(i.amount || 0),
-                  0
-                ),
-            });
-          }
-          if (typeof parsed.terminal === "number") setTerminal(parsed.terminal);
-          if (typeof parsed.terminalReturns === "number")
-            setTerminalReturns(parsed.terminalReturns);
-          if (parsed.transfers && Array.isArray(parsed.transfers.items)) {
-            const computedTotal =
-              Number(parsed.transfers.total) ||
-              parsed.transfers.items.reduce(
-                (s: number, i: any) => s + Number(i.amount || 0),
-                0
-              );
-            setTransfers({
-              items: parsed.transfers.items,
-              total: computedTotal,
-            });
-            setTerminalTransfer(computedTotal);
-          } else if (typeof parsed.terminalTransfer === "number") {
-            // Backward compatibility if no transfers stored previously
-            setTerminalTransfer(parsed.terminalTransfer);
-          }
-          if (
-            parsed.cashInRegister &&
-            typeof parsed.cashInRegister.total === "number"
-          ) {
-            setCashInRegister({
-              denominations: {
-                ...emptyDenominations,
-                ...(parsed.cashInRegister.denominations || {}),
-              },
-              total: Number(parsed.cashInRegister.total) || 0,
-            });
-          }
-          if (
-            parsed.cashWithdrawal &&
-            typeof parsed.cashWithdrawal.total === "number"
-          ) {
-            setCashWithdrawal({
-              denominations: {
-                ...emptyDenominations,
-                ...(parsed.cashWithdrawal.denominations || {}),
-              },
-              total: Number(parsed.cashWithdrawal.total) || 0,
-            });
-          }
-          if (typeof parsed.finalBalance === "number")
-            setFinalBalance(parsed.finalBalance);
-        }
+        applyParsedState(parsed);
       }
     } catch (error) {
       console.error("Error loading saved shift state:", error);
@@ -362,9 +366,36 @@ export const ShiftProvider: React.FC<{ children: ReactNode }> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Sync state from other tabs via storage events
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key !== STORAGE_KEY) return;
+
+      if (event.newValue === null) {
+        // Shift was submitted and cleared in another tab — reload to reflect new state
+        window.location.reload();
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(event.newValue);
+        isSyncingFromStorageRef.current = true;
+        applyParsedState(parsed);
+        setTimeout(() => {
+          isSyncingFromStorageRef.current = false;
+        }, 0);
+      } catch (e) {
+        console.error("Failed to sync tab state:", e);
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, [applyParsedState]);
+
   // Persist shift state whenever it changes
   useEffect(() => {
-    if (!hasHydratedRef.current) {
+    if (!hasHydratedRef.current || isSyncingFromStorageRef.current) {
       return;
     }
     try {
