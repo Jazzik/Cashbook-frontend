@@ -313,7 +313,6 @@ pipeline {
             echo 'Deploying tested frontend version to production on all build nodes'
 
             // Set production environment variables
-            env.SHOPS = 'makarov,makarov2,yuz1'
             env.MAKAROV_PORT = '3000'
             env.MAKAROV_BACKEND_PORT = '5000'
             env.MAKAROV2_PORT = '3001'
@@ -321,14 +320,22 @@ pipeline {
             env.YUZ1_PORT = '3002'
             env.YUZ1_BACKEND_PORT = '5002'
 
-            def shopsList = env.SHOPS.split(',')
-            def buildNodes = getNodesByLabel('linux')
-            echo "Deploying on nodes: ${buildNodes}"
+            def allShops = ['makarov', 'makarov2', 'yuz1']
+            def nodeShopsMap = [
+              'yuz1-linux': ['yuz1'],
+              'mkv1-linux': ['makarov', 'makarov2']
+            ]
+            echo "Deploying: ${nodeShopsMap}"
 
-            def deployTasks = buildNodes.collectEntries { nodeName ->
+            def deployTasks = nodeShopsMap.collectEntries { nodeName, shops ->
               ["Deploy on ${nodeName}": {
                 node(nodeName) {
-                  deployShops(shopsList, env.DOCKER_IMAGE_TAG)
+                  def stray = allShops - shops
+                  stray.each { s ->
+                    sh "docker rm -f ${s}_frontend_container || true"
+                    echo "Removed stray container: ${s}_frontend_container"
+                  }
+                  deployShops(shops, env.DOCKER_IMAGE_TAG)
                 }
               }]
             }
@@ -353,14 +360,22 @@ pipeline {
       steps {
         script {
           try {
-            def shopsList = env.SHOPS.split(',')
-            def buildNodes = getNodesByLabel('linux')
-            echo "Deploying on nodes: ${buildNodes}"
+            def allShops = ['makarov', 'makarov2', 'yuz1']
+            def nodeShopsMap = [
+              'yuz1-linux': ['yuz1'],
+              'mkv1-linux': ['makarov', 'makarov2']
+            ]
+            echo "Deploying: ${nodeShopsMap}"
 
-            def deployTasks = buildNodes.collectEntries { nodeName ->
+            def deployTasks = nodeShopsMap.collectEntries { nodeName, shops ->
               ["Deploy on ${nodeName}": {
                 node(nodeName) {
-                  deployShops(shopsList, env.DOCKER_IMAGE_TAG)
+                  def stray = allShops - shops
+                  stray.each { s ->
+                    sh "docker rm -f ${s}_frontend_container || true"
+                    echo "Removed stray container: ${s}_frontend_container"
+                  }
+                  deployShops(shops, env.DOCKER_IMAGE_TAG)
                 }
               }]
             }
