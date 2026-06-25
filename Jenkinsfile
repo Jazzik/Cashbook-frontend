@@ -5,6 +5,18 @@ def getNodesByLabel(label) {
   }.collect { it.name }
   }
 
+// Creates a deploy closure with properly scoped variables to avoid Jenkins CPS closure capture bug.
+def makeDeployTask(String nodeName, List shops, String imageTag) {
+  def allShops = ['makarov', 'makarov2', 'yuz1']
+  def stray = allShops - shops
+  return {
+    node(nodeName) {
+      stray.each { s -> sh "docker rm -f ${s}_frontend_container || true" }
+      deployShops(shops, imageTag)
+    }
+  }
+}
+
 // Helper function to deploy and verify shops on the current node
 def deployShops(shopsList, imageTag) {
   sh """
@@ -132,7 +144,8 @@ pipeline {
               env.TESTING_BACKEND_PORT = '3999'
               echo "Configured for test environment: ${env.SHOPS}"
             } else if (env.BRANCH_NAME == 'main') {
-              env.SHOPS = 'makarov,makarov2,yuz1'
+              env.YUZ1_LINUX_SHOPS = 'yuz1'
+              env.MKV1_LINUX_SHOPS = 'makarov,makarov2'
               env.MAKAROV_PORT = '3000'
               env.MAKAROV_BACKEND_PORT = '5000'
               env.MAKAROV2_PORT = '3001'
@@ -320,26 +333,14 @@ pipeline {
             env.YUZ1_PORT = '3002'
             env.YUZ1_BACKEND_PORT = '5002'
 
-            def allShops = ['makarov', 'makarov2', 'yuz1']
             def nodeShopsMap = [
-              'yuz1-linux': ['yuz1'],
-              'mkv1-linux': ['makarov', 'makarov2']
+              'yuz1-linux': env.YUZ1_LINUX_SHOPS.tokenize(','),
+              'mkv1-linux': env.MKV1_LINUX_SHOPS.tokenize(',')
             ]
-            echo "Deploying: ${nodeShopsMap}"
-
-            def deployTasks = nodeShopsMap.collectEntries { nodeName, shops ->
-              ["Deploy on ${nodeName}": {
-                node(nodeName) {
-                  def stray = allShops - shops
-                  stray.each { s ->
-                    sh "docker rm -f ${s}_frontend_container || true"
-                    echo "Removed stray container: ${s}_frontend_container"
-                  }
-                  deployShops(shops, env.DOCKER_IMAGE_TAG)
-                }
-              }]
+            def deployTasks = [:]
+            nodeShopsMap.each { nodeName, shops ->
+              deployTasks["Deploy on ${nodeName}"] = makeDeployTask(nodeName, shops, env.DOCKER_IMAGE_TAG)
             }
-
             parallel deployTasks
 
             echo 'Frontend production deployment completed successfully on all nodes'
@@ -360,26 +361,14 @@ pipeline {
       steps {
         script {
           try {
-            def allShops = ['makarov', 'makarov2', 'yuz1']
             def nodeShopsMap = [
-              'yuz1-linux': ['yuz1'],
-              'mkv1-linux': ['makarov', 'makarov2']
+              'yuz1-linux': env.YUZ1_LINUX_SHOPS.tokenize(','),
+              'mkv1-linux': env.MKV1_LINUX_SHOPS.tokenize(',')
             ]
-            echo "Deploying: ${nodeShopsMap}"
-
-            def deployTasks = nodeShopsMap.collectEntries { nodeName, shops ->
-              ["Deploy on ${nodeName}": {
-                node(nodeName) {
-                  def stray = allShops - shops
-                  stray.each { s ->
-                    sh "docker rm -f ${s}_frontend_container || true"
-                    echo "Removed stray container: ${s}_frontend_container"
-                  }
-                  deployShops(shops, env.DOCKER_IMAGE_TAG)
-                }
-              }]
+            def deployTasks = [:]
+            nodeShopsMap.each { nodeName, shops ->
+              deployTasks["Deploy on ${nodeName}"] = makeDeployTask(nodeName, shops, env.DOCKER_IMAGE_TAG)
             }
-
             parallel deployTasks
 
             echo 'Production containers deployed and verified successfully on all nodes'
