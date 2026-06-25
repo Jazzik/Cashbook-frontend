@@ -326,6 +326,8 @@ pipeline {
             echo 'Deploying tested frontend version to production on all build nodes'
 
             // Set production environment variables
+            env.YUZ1_LINUX_SHOPS = 'yuz1'
+            env.MKV1_LINUX_SHOPS = 'makarov,makarov2'
             env.MAKAROV_PORT = '3000'
             env.MAKAROV_BACKEND_PORT = '5000'
             env.MAKAROV2_PORT = '3001'
